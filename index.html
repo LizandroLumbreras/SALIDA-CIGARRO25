@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Salida - Almacén Cigarro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f8f8f8;
+    }
+    input, button, select {
+      display: block;
+      width: 100%;
+      max-width: 480px;
+      margin: 10px auto;
+      padding: 12px;
+      font-size: 16px;
+    }
+    .info-box, .ticket {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width: 480px;
+      margin: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    #ticketSalida {
+      display: none;
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #ticketSalida, #ticketSalida * {
+        visibility: visible;
+      }
+      #ticketSalida {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Salida - Almacén Cigarro</h2>
+
+  <input type="text" id="codigoInput" placeholder="Código de producto...">
+  <input type="number" id="cantidadInput" value="1" min="1">
+  <input type="text" id="sucursalInput" placeholder="Sucursal destino...">
+  <select id="entregadoPor">
+    <option value="">Selecciona quien entrega</option>
+    <option value="Gibrán">Gibrán</option>
+    <option value="Gerardo">Gerardo</option>
+  </select>
+  <button id="agregarBtn">Agregar a lista</button>
+
+  <div class="info-box">
+    <table id="tablaProductos">
+      <thead>
+        <tr><th>Código</th><th>Descripción</th><th>Cantidad</th><th></th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <button id="generarSalidaBtn" style="background:#28a745; color:white;">Generar Salida</button>
+
+  <!-- Ticket de salida -->
+  <div id="ticketSalida" class="ticket">
+    <div style="text-align:center;">
+      <img src="logo_proveedora_bn.png" alt="Logo" width="120"><br>
+      <strong>SALIDA DE ALMACÉN</strong><br><br>
+    </div>
+    <div id="datosTicket"></div>
+    <table id="tablaTicket">
+      <thead><tr><th>Descripción</th><th>Cantidad</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p><strong>Entregado por:</strong> <span id="entregado"></span></p>
+    <p><strong>Recibido por:</strong> ________________________</p>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, query, where, getDocs, addDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+    authDomain: "inventariopv-643f1.firebaseapp.com",
+    projectId: "inventariopv-643f1",
+    storageBucket: "inventariopv-643f1.appspot.com",
+    messagingSenderId: "96242533231",
+    appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const codigoInput = document.getElementById("codigoInput");
+  const cantidadInput = document.getElementById("cantidadInput");
+  const sucursalInput = document.getElementById("sucursalInput");
+  const entregadoPor = document.getElementById("entregadoPor");
+  const tablaBody = document.querySelector("#tablaProductos tbody");
+  const tablaTicketBody = document.querySelector("#tablaTicket tbody");
+  const datosTicket = document.getElementById("datosTicket");
+  const entregado = document.getElementById("entregado");
+
+  const lista = [];
+
+  document.getElementById("agregarBtn").addEventListener("click", async () => {
+    const codigo = codigoInput.value.trim();
+    const cantidad = parseInt(cantidadInput.value);
+
+    if (!codigo || isNaN(cantidad) || cantidad <= 0) return;
+
+    const productosRef = collection(db, "productos");
+    const q = query(productosRef, where("Codigo Barra", "==", codigo));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0].data();
+      lista.push({ codigo, descripcion: doc["Concepto"] || "Sin descripción", cantidad });
+      renderTabla();
+    }
+
+    codigoInput.value = "";
+    cantidadInput.value = "1";
+    codigoInput.focus();
+  });
+
+  function renderTabla() {
+    tablaBody.innerHTML = "";
+    lista.forEach((item, i) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${item.codigo}</td><td>${item.descripcion}</td><td>${item.cantidad}</td>
+        <td><button onclick="eliminar(${i})">❌</button></td>`;
+      tablaBody.appendChild(row);
+    });
+  }
+
+  window.eliminar = (i) => {
+    lista.splice(i, 1);
+    renderTabla();
+  };
+
+  document.getElementById("generarSalidaBtn").addEventListener("click", async () => {
+    const sucursal = sucursalInput.value.trim();
+    const entregadoNombre = entregadoPor.value;
+
+    if (lista.length === 0 || !sucursal || !entregadoNombre) {
+      alert("Completa todos los campos y agrega productos.");
+      return;
+    }
+
+    const ref = collection(db, "almacenes", "almacen_cigarro", "salidas");
+    const lastQuery = query(ref, orderBy("folio_num", "desc"), limit(1));
+    const snapshot = await getDocs(lastQuery);
+    let folioNum = 0;
+    snapshot.forEach(doc => { folioNum = doc.data().folio_num || 0; });
+    const nuevoFolio = folioNum + 1;
+    const folioTexto = "SC-" + String(nuevoFolio).padStart(5, "0");
+    const fecha = new Date().toLocaleString();
+
+    for (const item of lista) {
+      await addDoc(ref, {
+        ...item,
+        folio: folioTexto,
+        folio_num: nuevoFolio,
+        sucursal,
+        entregado: entregadoNombre,
+        fecha
+      });
+    }
+
+    generarTicket(folioTexto, fecha, sucursal, entregadoNombre);
+    window.print();
+    location.reload();
+  });
+
+  function generarTicket(folio, fecha, sucursal, entregadoNombre) {
+    datosTicket.innerHTML = `
+      <p><strong>Folio:</strong> ${folio}</p>
+      <p><strong>Fecha:</strong> ${fecha}</p>
+      <p><strong>Sucursal destino:</strong> ${sucursal}</p>
+    `;
+    entregado.textContent = entregadoNombre;
+    tablaTicketBody.innerHTML = "";
+    lista.forEach(item => {
+      tablaTicketBody.innerHTML += `<tr><td>${item.descripcion}</td><td>${item.cantidad}</td></tr>`;
+    });
+    document.getElementById("ticketSalida").style.display = "block";
+  }
+</script>
+</body>
+</html>
