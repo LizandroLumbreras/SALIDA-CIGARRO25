@@ -60,6 +60,9 @@
   <input type="text" id="codigoInput" placeholder="Código de producto...">
   <input type="number" id="cantidadInput" value="1" min="1">
   <input type="text" id="sucursalInput" placeholder="Sucursal destino...">
+<div class="info-box" id="infoProducto">
+  <p>Esperando código...</p>
+</div>
   <select id="entregadoPor">
     <option value="">Selecciona quien entrega</option>
     <option value="Gibrán">Gibrán</option>
@@ -117,29 +120,60 @@
   const tablaTicketBody = document.querySelector("#tablaTicket tbody");
   const datosTicket = document.getElementById("datosTicket");
   const entregado = document.getElementById("entregado");
+  const infoProducto = document.getElementById("infoProducto");
+  let productoActual = null;
+
+codigoInput.addEventListener("change", async () => {
+  const codigo = codigoInput.value.trim();
+  if (!codigo) return;
+
+  infoProducto.innerHTML = "<p>Buscando producto...</p>";
+  const productosRef = collection(db, "productos");
+  const q = query(productosRef, where("Codigo Barra", "==", codigo));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    productoActual = null;
+    infoProducto.innerHTML = "<p style='color:red;'>Producto no encontrado.</p>";
+  } else {
+    const data = snapshot.docs[0].data();
+    productoActual = {
+      codigo,
+      descripcion: data["Concepto"] || "Sin descripción",
+      costo: data["Costo sin Impuesto"] || 0
+    };
+    infoProducto.innerHTML = `
+      <p><strong>Concepto:</strong> ${productoActual.descripcion}</p>
+      <p><strong>Costo sin impuesto:</strong> $${parseFloat(productoActual.costo).toFixed(2)}</p>
+    `;
+  }
+});
 
   const lista = [];
 
-  document.getElementById("agregarBtn").addEventListener("click", async () => {
-    const codigo = codigoInput.value.trim();
-    const cantidad = parseInt(cantidadInput.value);
+ document.getElementById("agregarBtn").addEventListener("click", () => {
+  const cantidad = parseInt(cantidadInput.value);
 
-    if (!codigo || isNaN(cantidad) || cantidad <= 0) return;
+  if (!productoActual || isNaN(cantidad) || cantidad <= 0) {
+    alert("Escanea un producto válido antes de agregarlo.");
+    return;
+  }
 
-    const productosRef = collection(db, "productos");
-    const q = query(productosRef, where("Codigo Barra", "==", codigo));
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-      const doc = snapshot.docs[0].data();
-      lista.push({ codigo, descripcion: doc["Concepto"] || "Sin descripción", cantidad });
-      renderTabla();
-    }
-
-    codigoInput.value = "";
-    cantidadInput.value = "1";
-    codigoInput.focus();
+  lista.push({
+    codigo: productoActual.codigo,
+    descripcion: productoActual.descripcion,
+    cantidad
   });
+
+  renderTabla();
+
+  productoActual = null;
+  codigoInput.value = "";
+  cantidadInput.value = "1";
+  infoProducto.innerHTML = "<p>Esperando código...</p>";
+  codigoInput.focus();
+});
+
 
   function renderTabla() {
     tablaBody.innerHTML = "";
