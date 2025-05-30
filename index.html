@@ -223,6 +223,9 @@ codigoInput.addEventListener("change", async () => {
   });
 
  function generarTicket(folio, fecha, sucursal, entregadoNombre) {
+  const ticketDiv = document.getElementById("ticketSalida");
+
+  // Generador de contenido
   const ticketHTML = (tipo) => `
     <div style="text-align:center;">
       <h4>${tipo}</h4>
@@ -246,21 +249,25 @@ codigoInput.addEventListener("change", async () => {
     <p>________________________</p>
   `;
 
-  const ticketDiv = document.getElementById("ticketSalida");
-
-  // Mostrar ORIGINAL
+  // Mostrar y imprimir ORIGINAL
   ticketDiv.innerHTML = ticketHTML("ORIGINAL");
   ticketDiv.style.display = "block";
-  window.print();
-
-  // Después de 1 segundo, mostrar COPIA y volver a imprimir automáticamente
   setTimeout(() => {
-    ticketDiv.innerHTML = ticketHTML("COPIA");
     window.print();
 
-    // Después de imprimir la copia, recarga la página
-    setTimeout(() => location.reload(), 500);
-  }, 1000);
+    // Después de imprimir original, actualizar contenido y mostrar COPIA
+    setTimeout(() => {
+      ticketDiv.innerHTML = ticketHTML("COPIA");
+      ticketDiv.style.display = "block"; // Asegura que sigue visible
+      setTimeout(() => {
+        window.print();
+
+        // Finalmente, recarga la página
+        setTimeout(() => location.reload(), 500);
+      }, 500);
+    }, 500);
+
+  }, 100);
 }
 </script>
 </body>
