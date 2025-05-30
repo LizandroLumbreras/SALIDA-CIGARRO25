@@ -244,22 +244,22 @@ codigoInput.addEventListener("change", async () => {
     <br><br>
     <p style="margin-top: 25px;"><strong>Recibido por (nombre):</strong></p>
     <p>________________________</p>
-    <p><strong>Firma:</strong></p>
-    <p>________________________</p>
   `;
 
-const ticketDiv = document.getElementById("ticketSalida");
+  const ticketDiv = document.getElementById("ticketSalida");
 
-  // Imprimir ORIGINAL
+  // Mostrar ORIGINAL
   ticketDiv.innerHTML = ticketHTML("ORIGINAL");
   ticketDiv.style.display = "block";
   window.print();
 
-  // Pequeña pausa y luego imprimir COPIA
+  // Después de 1 segundo, mostrar COPIA y volver a imprimir automáticamente
   setTimeout(() => {
     ticketDiv.innerHTML = ticketHTML("COPIA");
     window.print();
-    location.reload(); // recarga después de la segunda impresión
+
+    // Después de imprimir la copia, recarga la página
+    setTimeout(() => location.reload(), 500);
   }, 1000);
 }
 </script>
