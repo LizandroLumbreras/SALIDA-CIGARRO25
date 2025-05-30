@@ -227,18 +227,39 @@ codigoInput.addEventListener("change", async () => {
   });
 
   function generarTicket(folio, fecha, sucursal, entregadoNombre) {
-    datosTicket.innerHTML = `
-      <p><strong>Folio:</strong> ${folio}</p>
-      <p><strong>Fecha:</strong> ${fecha}</p>
-      <p><strong>Sucursal destino:</strong> ${sucursal}</p>
-    `;
-    entregado.textContent = entregadoNombre;
-    tablaTicketBody.innerHTML = "";
-lista.forEach(item => {
-  tablaTicketBody.innerHTML += `<tr><td>${item.codigo}</td><td>${item.descripcion}</td><td>${item.cantidad}</td></tr>`;
-});
-    document.getElementById("ticketSalida").style.display = "block";
-  }
+  const contenidoTicket = `
+    <div style="text-align:center;">
+      <img src="logo_proveedora_bn.png" alt="Logo" width="120"><br>
+      <strong>SALIDA DE ALMACÉN</strong><br><br>
+    </div>
+    <p><strong>Folio:</strong> ${folio}</p>
+    <p><strong>Fecha:</strong> ${fecha}</p>
+    <p><strong>Sucursal destino:</strong> ${sucursal}</p>
+    <table style="width:100%; border-collapse:collapse;" border="1">
+      <thead><tr><th>Código</th><th>Descripción</th><th>Cantidad</th></tr></thead>
+      <tbody>
+        ${lista.map(item => `<tr><td>${item.codigo}</td><td>${item.descripcion}</td><td>${item.cantidad}</td></tr>`).join("")}
+      </tbody>
+    </table>
+    <p><strong>Entregado por:</strong> ${entregadoNombre}</p>
+    <br><br><br>
+    <p><strong>Firma de quien recibe:</strong></p>
+    <p>________________________</p>
+  `;
+
+  document.getElementById("ticketSalida").innerHTML = `
+    <div style="margin-bottom:60px;">
+      <h4 style="text-align:center;">ORIGINAL</h4>
+      ${contenidoTicket}
+    </div>
+    <div>
+      <h4 style="text-align:center;">COPIA</h4>
+      ${contenidoTicket}
+    </div>
+  `;
+
+  document.getElementById("ticketSalida").style.display = "block";
+}
 </script>
 </body>
 </html>
