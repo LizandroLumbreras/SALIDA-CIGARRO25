@@ -246,16 +246,18 @@ codigoInput.addEventListener("change", async () => {
     <p>________________________</p>
   `;
 
-  document.getElementById("ticketSalida").innerHTML = `
-    <div style="margin-bottom:60px;">
-      <h4 style="text-align:center;">ORIGINAL</h4>
-      ${contenidoTicket}
-    </div>
-    <div>
-      <h4 style="text-align:center;">COPIA</h4>
-      ${contenidoTicket}
-    </div>
-  `;
+document.getElementById("ticketSalida").innerHTML = `
+  <div style="margin-bottom:20px;">
+    <h4 style="text-align:center;">ORIGINAL</h4>
+    ${contenidoTicket}
+  </div>
+  <div style="border-top: 2px dashed black; margin: 40px 0;"></div>
+  <div>
+    <h4 style="text-align:center;">COPIA</h4>
+    ${contenidoTicket}
+  </div>
+`;
+
 
   document.getElementById("ticketSalida").style.display = "block";
 }
