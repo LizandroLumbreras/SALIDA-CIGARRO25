@@ -248,27 +248,28 @@ codigoInput.addEventListener("change", async () => {
     <p>________________________</p>
   `;
 
-  // 1. Imprimir ORIGINAL
+  // Mostrar ORIGINAL
   ticketDiv.innerHTML = ticketHTML("ORIGINAL");
   ticketDiv.style.display = "block";
 
-  // 2. Esperar a que el DOM actualice y mandar a imprimir ORIGINAL
+  // Primer impresión: ORIGINAL
   setTimeout(() => {
     window.print();
 
-    // 3. Esperar a que se imprima ORIGINAL, luego cambiar contenido a COPIA
+    // Pausar para asegurarse de que la impresora termine
     setTimeout(() => {
+      // Mostrar COPIA
       ticketDiv.innerHTML = ticketHTML("COPIA");
 
-      // 4. Esperar a que el DOM actualice y mandar a imprimir COPIA
+      // Segundo print: COPIA
       setTimeout(() => {
         window.print();
 
-        // 5. Finalmente recargar la página
-        setTimeout(() => location.reload(), 500);
-      }, 500);
-    }, 500);
-  }, 200);
+        // Recargar la página tras imprimir la copia
+        setTimeout(() => location.reload(), 800);
+      }, 800); // Espera antes de imprimir la copia
+    }, 1000); // Espera después de imprimir la original
+  }, 300); // Tiempo inicial de espera
 }
 </script>
 </body>
