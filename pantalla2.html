@@ -3,12 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buscar Producto</title>
+  <title>Buscar Producto - Salida Cigarro</title>
+
+  <!-- Fuente -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0; padding: 20px;
+      background: linear-gradient(to right, #00416A, #E4E5E6);
+      color: white;
+      min-height: 100vh;
+      position: relative;
+    }
+    .marca-agua {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.07;
+      z-index: 0;
+      max-width: 90%;
+      pointer-events: none;
+    }
+    .contenedor {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.9);
+      color: #00416A;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      position: relative;
+      z-index: 1;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00416A;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #00416A;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0c6cbd;
+    }
+    .producto {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: white;
+      color: #00416A;
+    }
+    .producto p { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
+
+  <div class="contenedor">
+    <h1>Buscar Producto</h1>
+    <input type="text" id="codigo" placeholder="Escanea o ingresa código de barras">
+    <button onclick="buscarProducto()">Buscar</button>
+
+    <div id="resultado"></div>
+
+    <button onclick="continuarCarrito()">Ir al Carrito</button>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 🔹 Configuración Firebase
+    // Config Firebase (usa tu mismo del proyecto Cigarro)
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -21,111 +111,58 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 🔎 Buscar producto por código
-    document.addEventListener("DOMContentLoaded", () => {
-      const buscarBtn = document.getElementById("buscarBtn");
+    // Buscar producto
+    window.buscarProducto = async () => {
+      const codigo = document.getElementById("codigo").value.trim();
+      const resultadoDiv = document.getElementById("resultado");
+      resultadoDiv.innerHTML = "";
 
-      buscarBtn.addEventListener("click", async () => {
-        const codigo = document.getElementById("codigoInput").value.trim();
+      if (!codigo) {
+        alert("Ingrese un código de barras");
+        return;
+      }
 
-        if (!codigo) {
-          alert("Ingresa un código de barras");
+      try {
+        const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          resultadoDiv.innerHTML = "<p>No se encontró producto.</p>";
           return;
         }
 
-        try {
-          const productosRef = collection(db, "productos");
-          const q = query(productosRef, where("codigoBarra", "==", codigo));
-          const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          resultadoDiv.innerHTML = `
+            <div class="producto">
+              <p><strong>Código:</strong> ${data["Codigo Barra"]}</p>
+              <p><strong>Producto:</strong> ${data.Nombre || "Sin nombre"}</p>
+              <p><strong>Unidad:</strong> ${data.Unidad || "-"}</p>
+              <label>Cantidad a salir:</label>
+              <input type="number" id="cantidad" min="1" value="1">
+              <button onclick="agregarProducto('${data["Codigo Barra"]}', '${data.Nombre || ""}')">Agregar al carrito</button>
+            </div>
+          `;
+        });
+      } catch (error) {
+        console.error("Error buscando producto:", error);
+        alert("Error al buscar producto");
+      }
+    };
 
-          if (!querySnapshot.empty) {
-            querySnapshot.forEach((doc) => {
-              const data = doc.data();
+    // Agregar producto a localStorage
+    window.agregarProducto = (codigo, nombre) => {
+      const cantidad = document.getElementById("cantidad").value;
+      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+      carrito.push({ codigo, nombre, cantidad });
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+      alert("Producto agregado al carrito");
+    };
 
-              // 📦 Guardar en carrito local
-              let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-              carrito.push({
-                codigo: data.codigoBarra,
-                concepto: data.concepto,
-                marca: data.marca,
-                cantidad: 1
-              });
-              localStorage.setItem("carrito", JSON.stringify(carrito));
-
-              // 👉 Ir a pantalla3
-              window.location.href = "pantalla3.html";
-            });
-          } else {
-            alert("Producto no encontrado en Firebase");
-          }
-        } catch (error) {
-          console.error("Error al buscar:", error);
-        }
-      });
-    });
+    // Ir al carrito
+    window.continuarCarrito = () => {
+      window.location.href = "pantalla3.html";
+    };
   </script>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(to right, #00416A, #E4E5E6);
-      margin: 0;
-      padding: 20px;
-      min-height: 100vh;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .contenedor {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
-    }
-
-    h2 {
-      color: #00416A;
-      margin-bottom: 20px;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #00416A;
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    button:hover {
-      background: #0c6cbd;
-    }
-  </style>
-</head>
-<body>
-  <div class="contenedor">
-    <h2>Buscar producto</h2>
-    <input type="text" id="codigoInput" placeholder="Escanea o ingresa código de barras">
-    <button id="buscarBtn">Buscar</button>
-  </div>
 </body>
 </html>
