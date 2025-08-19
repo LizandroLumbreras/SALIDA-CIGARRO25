@@ -2,103 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Buscador de Productos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buscar Producto - Salida Cigarro</title>
-
-  <!-- Fuente -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
-      background: linear-gradient(to right, #00416A, #E4E5E6);
-      color: white;
-      min-height: 100vh;
-      position: relative;
-    }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
-    }
-    .contenedor {
-      max-width: 600px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.9);
-      color: #00416A;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      position: relative;
-      z-index: 1;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #00416A;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 16px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #00416A;
-      color: white;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #0c6cbd;
-    }
-    .producto {
-      margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      background: white;
-      color: #00416A;
-    }
-    .producto p { margin: 6px 0; }
-  </style>
-</head>
-<body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
-
-  <div class="contenedor">
-    <h1>Buscar Producto</h1>
-    <input type="text" id="codigo" placeholder="Escanea o ingresa código de barras">
-    <button onclick="buscarProducto()">Buscar</button>
-
-    <div id="resultado"></div>
-
-    <button onclick="continuarCarrito()">Ir al Carrito</button>
-  </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Config Firebase (usa tu mismo del proyecto Cigarro)
+    // 🔹 Configuración Firebase (ya con tu proyecto inventariopv-643f1)
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -111,58 +21,64 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Buscar producto
-    window.buscarProducto = async () => {
+    async function buscarProducto(){
       const codigo = document.getElementById("codigo").value.trim();
-      const resultadoDiv = document.getElementById("resultado");
-      resultadoDiv.innerHTML = "";
+      if(!codigo) return alert("Ingrese un código");
 
-      if (!codigo) {
-        alert("Ingrese un código de barras");
+      const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
+      const querySnapshot = await getDocs(q);
+
+      if(querySnapshot.empty){
+        document.getElementById("resultado").innerHTML = "<p style='color:red'>Producto no encontrado</p>";
         return;
       }
 
-      try {
-        const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
-        const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        document.getElementById("resultado").innerHTML = `
+          <h3>${data.Descripcion || "Sin descripción"}</h3>
+          <p><b>Código:</b> ${data["Codigo Barra"]}</p>
+          <p><b>Unidad:</b> ${data.Unidad || "N/A"}</p>
+          <label>Cantidad:</label>
+          <input type="number" id="cantidad" min="1" value="1">
+          <button onclick="agregarCarrito('${data["Codigo Barra"]}','${data.Descripcion}')">➕ Agregar al Carrito</button>
+        `;
+      });
+    }
 
-        if (querySnapshot.empty) {
-          resultadoDiv.innerHTML = "<p>No se encontró producto.</p>";
-          return;
-        }
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          resultadoDiv.innerHTML = `
-            <div class="producto">
-              <p><strong>Código:</strong> ${data["Codigo Barra"]}</p>
-              <p><strong>Producto:</strong> ${data.Nombre || "Sin nombre"}</p>
-              <p><strong>Unidad:</strong> ${data.Unidad || "-"}</p>
-              <label>Cantidad a salir:</label>
-              <input type="number" id="cantidad" min="1" value="1">
-              <button onclick="agregarProducto('${data["Codigo Barra"]}', '${data.Nombre || ""}')">Agregar al carrito</button>
-            </div>
-          `;
-        });
-      } catch (error) {
-        console.error("Error buscando producto:", error);
-        alert("Error al buscar producto");
-      }
-    };
-
-    // Agregar producto a localStorage
-    window.agregarProducto = (codigo, nombre) => {
+    window.agregarCarrito = function(codigo,descripcion){
       const cantidad = document.getElementById("cantidad").value;
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      carrito.push({ codigo, nombre, cantidad });
-      localStorage.setItem("carrito", JSON.stringify(carrito));
-      alert("Producto agregado al carrito");
-    };
+      if(cantidad <= 0) return alert("Cantidad inválida");
 
-    // Ir al carrito
-    window.continuarCarrito = () => {
-      window.location.href = "pantalla3.html";
-    };
+      let carrito = JSON.parse(localStorage.getItem("carritoCigarro")) || [];
+      carrito.push({codigo, descripcion, cantidad});
+      localStorage.setItem("carritoCigarro", JSON.stringify(carrito));
+
+      alert("Producto agregado ✔️");
+      document.getElementById("codigo").value = "";
+      document.getElementById("resultado").innerHTML = "";
+    }
   </script>
+  <style>
+    body{font-family:Poppins,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white}
+    .contenedor{background:white;color:#00416A;max-width:800px;margin:auto;padding:20px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+    input{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:1px solid #ccc}
+    button{margin-top:12px;padding:10px 15px;background:#00416A;color:white;border:none;border-radius:8px;cursor:pointer}
+    #resultado{margin-top:15px}
+    .acciones{margin-top:20px;display:flex;justify-content:space-between}
+  </style>
+</head>
+<body>
+  <div class="contenedor">
+    <h2>🔎 Buscar Producto (Almacén CIGARRO)</h2>
+    <input type="text" id="codigo" placeholder="Escanea o escribe el código">
+    <button onclick="buscarProducto()">Buscar</button>
+
+    <div id="resultado"></div>
+
+    <div class="acciones">
+      <button onclick="window.location.href='pantalla3.html'">➡️ Ir al Carrito</button>
+    </div>
+  </div>
 </body>
 </html>
