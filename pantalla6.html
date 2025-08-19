@@ -2,131 +2,55 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Resumen Final - Salida Cigarro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resumen Salida - Cigarro</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
-      background: linear-gradient(to right,#00416A,#E4E5E6);
-      color: white;
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-    .contenedor {
-      max-width: 800px;
-      margin: auto;
-      background: white;
-      color: #00416A;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #00416A;
-      color: white;
-    }
-    .firmas {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-    .firma-box {
-      text-align: center;
-      margin: 10px;
-    }
-    .firma-box img {
-      max-width: 200px;
-      border: 1px solid #ccc;
-      background: white;
-      padding: 5px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #00416A;
-      color: white;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #0c6cbd;
-    }
-    @media (max-width:600px){
-      body{padding:10px;}
-      .contenedor{padding:15px;}
-      table{font-size:14px;}
-    }
+    body{font-family:Poppins,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white}
+    .contenedor{background:white;color:#00416A;max-width:900px;margin:auto;padding:20px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+    table{width:100%;border-collapse:collapse;margin-top:15px}
+    th,td{border:1px solid #ccc;padding:6px;text-align:center}
+    th{background:#00416A;color:white}
+    .firmas{display:flex;justify-content:space-around;margin-top:20px;flex-wrap:wrap}
+    .firma-box{text-align:center}
+    .firma-box img{max-width:200px;border:1px solid #ccc}
+    button{padding:12px;margin-top:15px;width:48%;font-weight:bold;border:none;border-radius:8px;cursor:pointer;background:#00416A;color:white}
   </style>
 </head>
 <body>
   <div class="contenedor">
-    <h2>Resumen de Salida - Almacén Cigarro</h2>
+    <h2>Resumen Final</h2>
+    <p><b>Folio:</b> <span id="folio"></span></p>
+    <p><b>Fecha:</b> <span id="fecha"></span></p>
+    <p><b>Destino:</b> <span id="destino"></span></p>
+    <p><b>Entrega:</b> <span id="entrega"></span></p>
+    <p><b>Recibe:</b> <span id="recibe"></span></p>
 
-    <p><strong>Folio:</strong> <span id="folio"></span></p>
-    <p><strong>Fecha:</strong> <span id="fecha"></span></p>
-    <p><strong>Destino:</strong> <span id="destino"></span></p>
-    <p><strong>Entrega:</strong> <span id="entrega"></span></p>
-    <p><strong>Recibe:</strong> <span id="recibe"></span></p>
-
-    <h3>Productos</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Producto</th>
-          <th>Cantidad</th>
-        </tr>
-      </thead>
-      <tbody id="tablaProductos"></tbody>
+    <table id="tablaProductos">
+      <thead><tr><th>Código</th><th>Descripción</th><th>Cantidad</th></tr></thead>
+      <tbody></tbody>
     </table>
 
     <div class="firmas">
       <div class="firma-box">
         <p>Entrega</p>
-        <img id="firmaEntrega" alt="Firma Entrega">
-        <p id="nombreEntrega"></p>
+        <img id="firmaEntrega">
       </div>
       <div class="firma-box">
         <p>Recibe</p>
-        <img id="firmaRecibe" alt="Firma Recibe">
-        <p id="nombreRecibe"></p>
+        <img id="firmaRecibe">
       </div>
     </div>
 
-    <button onclick="guardarSalida()">Guardar en Firebase</button>
-    <button onclick="window.print()">Imprimir Ticket</button>
+    <div style="display:flex;gap:4%;justify-content:center">
+      <button onclick="guardarSalida()">💾 Guardar</button>
+      <button onclick="window.print()">🖨️ Imprimir</button>
+    </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
+  <script>
+    // ==== Config Firebase ====
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -135,55 +59,48 @@
       messagingSenderId: "96242533231",
       appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    // ==== Datos de salida ====
+    const salida = JSON.parse(localStorage.getItem("datosSalidaCigarro")) || {};
+    const carrito = JSON.parse(localStorage.getItem("carritoCigarro")) || [];
+    const firmaEntrega = localStorage.getItem("firmaEntregaCigarro") || "";
+    const firmaRecibe = localStorage.getItem("firmaRecibeCigarro") || "";
 
-    // Recuperar datos de localStorage
-    const folio = localStorage.getItem("folio") || "SIN FOLIO";
-    const fecha = localStorage.getItem("fecha") || new Date().toLocaleString();
-    const destino = localStorage.getItem("destino") || "-";
-    const entrega = localStorage.getItem("entrega") || "-";
-    const recibe = localStorage.getItem("recibe") || "-";
-    const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+    // Rellenar resumen
+    document.getElementById("folio").textContent = salida.folio;
+    document.getElementById("fecha").textContent = salida.fecha;
+    document.getElementById("destino").textContent = salida.destino;
+    document.getElementById("entrega").textContent = salida.entrega;
+    document.getElementById("recibe").textContent = salida.recibe;
 
-    document.getElementById("folio").textContent = folio;
-    document.getElementById("fecha").textContent = fecha;
-    document.getElementById("destino").textContent = destino;
-    document.getElementById("entrega").textContent = entrega;
-    document.getElementById("recibe").textContent = recibe;
-
-    const tabla = document.getElementById("tablaProductos");
-    carrito.forEach(p => {
-      const fila = `<tr>
-        <td>${p.codigo}</td>
-        <td>${p.nombre}</td>
-        <td>${p.cantidad}</td>
-      </tr>`;
-      tabla.innerHTML += fila;
+    const tbody = document.querySelector("#tablaProductos tbody");
+    carrito.forEach(p=>{
+      tbody.innerHTML += `<tr><td>${p.codigo}</td><td>${p.descripcion}</td><td>${p.cantidad}</td></tr>`;
     });
 
-    // Firmas
-    document.getElementById("firmaEntrega").src = localStorage.getItem("firmaEntrega") || "";
-    document.getElementById("firmaRecibe").src = localStorage.getItem("firmaRecibe") || "";
-    document.getElementById("nombreEntrega").textContent = entrega;
-    document.getElementById("nombreRecibe").textContent = recibe;
+    document.getElementById("firmaEntrega").src = firmaEntrega;
+    document.getElementById("firmaRecibe").src = firmaRecibe;
 
-    async function guardarSalida() {
-      try {
-        await addDoc(collection(db, "almacenes/almacen_cigarro/salidas"), {
-          folio, fecha, destino, entrega, recibe, carrito,
-          firmaEntrega: localStorage.getItem("firmaEntrega") || "",
-          firmaRecibe: localStorage.getItem("firmaRecibe") || ""
+    // Guardar en Firebase
+    async function guardarSalida(){
+      try{
+        await db.collection("almacenes").doc("almacen_cigarro").collection("salidas").add({
+          ...salida,
+          productos: carrito,
+          firmaEntrega,
+          firmaRecibe,
+          timestamp:new Date()
         });
-        alert("Salida guardada en Firebase");
+        alert("✅ Salida guardada correctamente");
         localStorage.clear();
-        window.location.href = "index.html";
-      } catch (e) {
-        alert("Error guardando en Firebase: " + e);
+        window.location.href="index.html";
+      }catch(err){
+        console.error(err);
+        alert("❌ Error al guardar");
       }
     }
-    window.guardarSalida = guardarSalida;
   </script>
 </body>
 </html>
