@@ -2,168 +2,67 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Carrito de Productos</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carrito de Productos - Almacén Cigarro</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
-      background: linear-gradient(to right, #00416A, #E4E5E6);
-      color: white;
-      min-height: 100vh;
-      position: relative;
-    }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
-    }
-    .contenedor {
-      max-width: 800px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.95);
-      color: #00416A;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      position: relative;
-      z-index: 1;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #00416A;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-      font-size: 14px;
-    }
-    th {
-      background: #00416A;
-      color: white;
-    }
-    input[type="number"] {
-      width: 60px;
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      text-align: center;
-    }
-    .acciones {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 20px;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    button {
-      flex: 1;
-      min-width: 120px;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #00416A;
-      color: white;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #0c6cbd;
-    }
-    .btn-eliminar {
-      background: #e60000;
-    }
-    .btn-eliminar:hover {
-      background: #b30000;
-    }
+    body{font-family:Poppins,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white}
+    .contenedor{background:white;color:#00416A;max-width:900px;margin:auto;padding:20px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+    table{width:100%;margin-top:15px;border-collapse:collapse}
+    th,td{border:1px solid #ccc;padding:6px;text-align:center}
+    th{background:#00416A;color:white}
+    button{padding:6px 12px;margin:3px;background:#00416A;color:white;border:none;border-radius:6px;cursor:pointer}
+    .acciones{display:flex;justify-content:space-between;margin-top:15px}
   </style>
 </head>
 <body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
-
   <div class="contenedor">
-    <h1>Carrito de Productos</h1>
-
-    <table id="tablaProductos">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Descripción</th>
-          <th>Cantidad</th>
-          <th>Acción</th>
-        </tr>
-      </thead>
+    <h2>🛒 Carrito de Productos</h2>
+    <table id="tablaCarrito">
+      <thead><tr><th>Código</th><th>Descripción</th><th>Cantidad</th><th>❌</th></tr></thead>
       <tbody></tbody>
     </table>
 
     <div class="acciones">
-      <button onclick="agregarMas()">➕ Agregar más</button>
-      <button onclick="continuar()">➡️ Continuar</button>
+      <button onclick="window.location.href='pantalla2.html'">⬅️ Agregar más productos</button>
+      <button onclick="vaciar()">🧹 Vaciar</button>
+      <button onclick="continuar()">✅ Continuar a Firmas</button>
     </div>
   </div>
 
   <script>
-    // Cargar carrito desde localStorage
     let carrito = JSON.parse(localStorage.getItem("carritoCigarro")) || [];
+    const tbody = document.querySelector("#tablaCarrito tbody");
 
-    const tabla = document.querySelector("#tablaProductos tbody");
-
-    function renderTabla() {
-      tabla.innerHTML = "";
-      carrito.forEach((prod, index) => {
-        const fila = document.createElement("tr");
-        fila.innerHTML = `
-          <td>${prod.codigo}</td>
-          <td>${prod.descripcion}</td>
-          <td>
-            <input type="number" min="1" value="${prod.cantidad}" 
-              onchange="actualizarCantidad(${index}, this.value)">
-          </td>
-          <td><button class="btn-eliminar" onclick="eliminarProducto(${index})">❌</button></td>
-        `;
-        tabla.appendChild(fila);
+    function renderCarrito(){
+      tbody.innerHTML = "";
+      carrito.forEach((p,i)=>{
+        tbody.innerHTML += `<tr>
+          <td>${p.codigo}</td>
+          <td>${p.descripcion}</td>
+          <td>${p.cantidad}</td>
+          <td><button onclick="eliminar(${i})">❌</button></td>
+        </tr>`;
       });
+    }
+
+    function eliminar(i){
+      carrito.splice(i,1);
       localStorage.setItem("carritoCigarro", JSON.stringify(carrito));
+      renderCarrito();
     }
 
-    function actualizarCantidad(index, nuevaCantidad) {
-      carrito[index].cantidad = parseInt(nuevaCantidad);
-      localStorage.setItem("carritoCigarro", JSON.stringify(carrito));
+    function vaciar(){
+      carrito = [];
+      localStorage.removeItem("carritoCigarro");
+      renderCarrito();
     }
 
-    function eliminarProducto(index) {
-      carrito.splice(index, 1);
-      renderTabla();
+    function continuar(){
+      if(carrito.length === 0) return alert("El carrito está vacío");
+      window.location.href="pantalla4.html";
     }
 
-    function agregarMas() {
-      window.location.href = "pantalla2.html";
-    }
-
-    function continuar() {
-      if (carrito.length === 0) {
-        alert("Agrega al menos un producto antes de continuar");
-        return;
-      }
-      window.location.href = "pantalla4.html";
-    }
-
-    renderTabla();
+    renderCarrito();
   </script>
 </body>
 </html>
