@@ -37,8 +37,8 @@
         let nuevoFolio = "SALCIG-0001"; // valor inicial
 
         if (snap.exists()) {
-          let actual = snap.data().ultimoFolio || 0;
-          let siguiente = actual + 1;
+         let actual = snap.data().Ultimo || 0;
+let siguiente = actual + 1;
 
           // Formato -> SALCIG-000X
           nuevoFolio = "SALCIG-" + String(siguiente).padStart(4, "0");
