@@ -2,15 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Pantalla 2 - Buscar Producto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buscar Producto - Cigarro</title>
-
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Tu configuración de Firebase
+    // 🔹 Configuración Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -23,152 +21,97 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Referencias a los elementos
-    const inputCodigo = document.getElementById('codigo');
-    const resultado = document.getElementById('resultado');
-    const nombre = document.getElementById('nombre');
-    const codigoMostrar = document.getElementById('codigoMostrar');
-    const cantidadInput = document.getElementById('cantidad');
+    // 🔹 Buscar producto por código
+    async function buscarProducto() {
+      const codigo = document.getElementById("codigoInput").value.trim();
+      if (!codigo) {
+        alert("Escribe o escanea un código de barras");
+        return;
+      }
 
-    // Buscar producto en Firestore al presionar Enter
-    inputCodigo.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter") {
-        const codigo = inputCodigo.value.trim();
-        if (!codigo) return;
-
-        const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
+      try {
+        const q = query(collection(db, "productos"), where("codigoBarra", "==", codigo));
         const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            nombre.textContent = data.Nombre || "Sin nombre";
-            codigoMostrar.textContent = data["Codigo Barra"];
-            resultado.style.display = "block";
-            cantidadInput.focus();
-          });
-        } else {
-          alert("Producto no encontrado en Firebase");
-          resultado.style.display = "none";
+        if (querySnapshot.empty) {
+          alert("❌ Producto no encontrado en la base de datos.");
+          return;
         }
+
+        let producto = null;
+        querySnapshot.forEach(doc => {
+          producto = { id: doc.id, ...doc.data() };
+        });
+
+        if (producto) {
+          // 🔹 Recuperar carrito existente o crear uno nuevo
+          let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+
+          // 🔹 Agregar producto encontrado al carrito
+          carrito.push({
+            codigo: producto.codigoBarra,
+            descripcion: producto.concepto,
+            marca: producto.marca || "SIN MARCA",
+            cantidad: 1  // se inicializa en 1
+          });
+
+          // 🔹 Guardar en localStorage
+          localStorage.setItem("carrito", JSON.stringify(carrito));
+
+          // 🔹 Redirigir a la pantalla del carrito
+          window.location.href = "pantalla3.html";
+        }
+      } catch (error) {
+        console.error("Error buscando producto:", error);
+        alert("⚠️ Error al consultar la base de datos.");
       }
-    });
+    }
 
-    // Agregar al carrito
-    window.agregarCarrito = function() {
-      const producto = {
-        codigo: codigoMostrar.textContent,
-        nombre: nombre.textContent,
-        cantidad: cantidadInput.value
-      };
-
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      carrito.push(producto);
-      localStorage.setItem("carrito", JSON.stringify(carrito));
-
-      alert("Producto agregado al carrito");
-
-      inputCodigo.value = "";
-      resultado.style.display = "none";
-      inputCodigo.focus();
-    };
+    window.buscarProducto = buscarProducto;
   </script>
 
-  <!-- Estilos -->
   <style>
     body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
+      font-family: Arial, sans-serif;
       background: linear-gradient(to right, #00416A, #E4E5E6);
       color: white;
+      padding: 20px;
+      text-align: center;
       min-height: 100vh;
-      position: relative;
-    }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
     }
     .contenedor {
-      max-width: 600px;
+      max-width: 500px;
       margin: auto;
-      background: rgba(255, 255, 255, 0.9);
-      color: #00416A;
+      background: white;
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      position: relative;
-      z-index: 1;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #00416A;
-    }
-    label {
-      font-weight: 600;
-      display: block;
-      margin-top: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      color: black;
     }
     input {
       width: 100%;
       padding: 10px;
-      margin-top: 6px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
       font-size: 16px;
+      margin: 10px 0;
     }
     button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+      padding: 10px 20px;
       background: #00416A;
       color: white;
-      transition: background 0.3s;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
     }
     button:hover {
-      background: #0c6cbd;
-    }
-    .resultado {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 8px;
-      background: #f0f0f0;
-      display: none;
-    }
-    .resultado strong {
-      color: #00416A;
+      background: #006699;
     }
   </style>
 </head>
 <body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
-
   <div class="contenedor">
-    <h1>Buscar Producto</h1>
-
-    <label for="codigo">Escanea o escribe el código:</label>
-    <input type="text" id="codigo" autofocus placeholder="Código de barras...">
-
-    <div class="resultado" id="resultado">
-      <p><strong>Producto:</strong> <span id="nombre"></span></p>
-      <p><strong>Código:</strong> <span id="codigoMostrar"></span></p>
-      <p><strong>Cantidad:</strong></p>
-      <input type="number" id="cantidad" min="1" value="1">
-
-      <button onclick="agregarCarrito()">Agregar al carrito</button>
-    </div>
-
-    <button onclick="window.location.href='pantalla3.html'">Ver carrito</button>
+    <h2>Buscar Producto</h2>
+    <input type="text" id="codigoInput" placeholder="Escanea o escribe el código de barras">
+    <button onclick="buscarProducto()">Agregar al carrito</button>
   </div>
 </body>
 </html>
