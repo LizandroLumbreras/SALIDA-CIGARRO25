@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pantalla 2 - Buscar Producto</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -12,17 +12,24 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(to right,#00416A,#E4E5E6);
-      margin:0; padding:20px; color:white; min-height:100vh;
+      background: linear-gradient(to right, #00416A, #E4E5E6);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       position: relative;
+      color: #00416A;
     }
 
-    /* Marca de agua como en Zapata */
     body::before {
-      content:"";
+      content: "";
       position: fixed;
-      top:50%; left:50%;
-      width:80%; height:80%;
+      top: 50%;
+      left: 50%;
+      width: 80%;
+      height: 80%;
       background: url('logo_proveedora.png') no-repeat center center;
       background-size: contain;
       opacity: 0.07;
@@ -32,14 +39,13 @@
     }
 
     .contenedor {
-      max-width: 500px;
-      margin: auto;
       background: white;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      color: black;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       text-align: center;
+      max-width: 400px;
+      width: 90%;
       position: relative;
       z-index: 1;
     }
@@ -47,10 +53,11 @@
     input {
       width: 100%;
       padding: 10px;
-      font-size: 16px;
       margin: 10px 0;
-      border: 1px solid #ccc;
       border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      text-align: center;
     }
 
     button {
@@ -58,25 +65,33 @@
       background: #00416A;
       color: white;
       border: none;
-      cursor: pointer;
       border-radius: 6px;
+      cursor: pointer;
       font-size: 16px;
     }
 
     button:hover {
-      background: #006699;
+      background: #0c6cbd;
+    }
+
+    #mensaje {
+      margin-top: 10px;
+      font-weight: bold;
+      color: red;
     }
   </style>
 </head>
 <body>
   <div class="contenedor">
     <h2>Buscar Producto</h2>
-    <input type="text" id="codigoInput" placeholder="Escanea o escribe el código de barras">
+    <input type="text" id="codigo" placeholder="Código de barras" />
+    <input type="number" id="cantidad" placeholder="Cantidad" min="1" />
     <button onclick="buscarProducto()">Agregar al carrito</button>
+    <div id="mensaje"></div>
   </div>
 
   <script>
-    // 🔹 Configuración Firebase
+    // Configuración Firebase (la tuya de inventariopv-643f1)
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -89,48 +104,44 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 🔹 Buscar producto por código
     async function buscarProducto() {
-      const codigo = document.getElementById("codigoInput").value.trim();
-      if (!codigo) {
-        alert("Escribe o escanea un código de barras");
+      const codigo = document.getElementById("codigo").value.trim();
+      const cantidad = parseInt(document.getElementById("cantidad").value.trim());
+      const mensaje = document.getElementById("mensaje");
+
+      if (!codigo || !cantidad) {
+        mensaje.textContent = "Debes ingresar código y cantidad";
         return;
       }
 
       try {
-        const snapshot = await db.collection("productos").where("codigoBarra","==",codigo).get();
+        const snap = await db.collection("productos").where("codigoBarra", "==", codigo).get();
 
-        if (snapshot.empty) {
-          alert("❌ Producto no encontrado en la base de datos.");
+        if (snap.empty) {
+          mensaje.textContent = "Producto no encontrado";
           return;
         }
 
-        let producto = null;
-        snapshot.forEach(doc => {
-          producto = { id: doc.id, ...doc.data() };
-        });
+        snap.forEach(doc => {
+          const data = doc.data();
 
-        if (producto) {
-          // 🔹 Recuperar carrito existente o crear uno nuevo
+          // Recuperar carrito previo
           let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
 
-          // 🔹 Agregar producto encontrado
           carrito.push({
-            codigo: producto.codigoBarra,
-            descripcion: producto.concepto,
-            marca: producto.marca || "SIN MARCA",
-            cantidad: 1
+            id: doc.id,
+            codigo: data["CodigoBarra"],
+            descripcion: data.Nombre || "Sin nombre",
+            cantidad: cantidad
           });
 
-          // 🔹 Guardar en localStorage
           localStorage.setItem("carrito", JSON.stringify(carrito));
-
-          // 🔹 Redirigir a pantalla3.html
           window.location.href = "pantalla3.html";
-        }
+        });
+
       } catch (error) {
         console.error("Error buscando producto:", error);
-        alert("⚠️ Error al consultar la base de datos.");
+        mensaje.textContent = "Error consultando la base de datos";
       }
     }
   </script>
