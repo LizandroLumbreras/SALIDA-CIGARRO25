@@ -3,118 +3,165 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firma - Quien Entrega</title>
-
-  <!-- Fuente -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
+  <title>Resumen de Salida</title>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
       background: linear-gradient(to right, #00416A, #E4E5E6);
-      color: white;
+      margin: 0;
+      padding: 20px;
       min-height: 100vh;
+      box-sizing: border-box;
       display: flex;
-      align-items: center;
       justify-content: center;
-      flex-direction: column;
+      align-items: flex-start;
     }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
-    }
+
     .contenedor {
-      max-width: 700px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.95);
-      color: #00416A;
+      background: white;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      position: relative;
-      z-index: 1;
-      text-align: center;
-    }
-    h1 {
-      margin-bottom: 15px;
-    }
-    canvas {
-      border: 2px solid #00416A;
-      border-radius: 6px;
-      background: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      max-width: 900px;
       width: 100%;
-      height: 250px;
     }
-    button {
-      margin: 8px;
-      padding: 10px 16px;
-      font-size: 15px;
-      border: none;
+
+    h2 {
+      text-align: center;
+      color: #00416A;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 12px;
+      color: #333;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
       border-radius: 6px;
-      cursor: pointer;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
       background: #00416A;
       color: white;
-      transition: background 0.3s;
     }
-    button:hover {
+
+    .btn {
+      background: #00416A;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
       background: #0c6cbd;
     }
   </style>
 </head>
 <body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
-
   <div class="contenedor">
-    <h1>Firma - Quien Entrega</h1>
-    <canvas id="canvasFirma"></canvas>
-    <div>
-      <button onclick="limpiarFirma()">Limpiar</button>
-      <button onclick="guardarFirma()">Continuar</button>
-    </div>
+    <h2>Resumen de Salida</h2>
+
+    <label>Folio</label>
+    <input type="text" id="folio" readonly>
+
+    <label>Fecha</label>
+    <input type="text" id="fecha" readonly>
+
+    <label>Quién entrega</label>
+    <input type="text" id="entrega" placeholder="Nombre de quien entrega">
+
+    <label>Quién recibe</label>
+    <input type="text" id="recibe" placeholder="Nombre de quien recibe">
+
+    <label>Destino</label>
+    <input type="text" id="destino" placeholder="Sucursal / Área de destino">
+
+    <h3>Productos</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Concepto</th>
+          <th>Marca</th>
+          <th>Cantidad</th>
+        </tr>
+      </thead>
+      <tbody id="tablaProductos"></tbody>
+    </table>
+
+    <button class="btn" id="continuarFirmas">Continuar a Firmas</button>
   </div>
 
   <script>
-    const canvas = document.getElementById("canvasFirma");
-    const ctx = canvas.getContext("2d");
-    let dibujando = false;
+    function cargarResumen() {
+      // Datos básicos desde index
+      document.getElementById("folio").value = localStorage.getItem("folio") || "SIN FOLIO";
+      document.getElementById("fecha").value = localStorage.getItem("fecha") || new Date().toLocaleString();
 
-    function ajustarCanvas() {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = 250;
+      // Carrito
+      const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+      const tbody = document.getElementById("tablaProductos");
+      tbody.innerHTML = "";
+
+      carrito.forEach(item => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${item.codigo}</td>
+          <td>${item.concepto || "-"}</td>
+          <td>${item.marca || "-"}</td>
+          <td>${item.cantidad}</td>
+        `;
+        tbody.appendChild(fila);
+      });
     }
-    ajustarCanvas();
 
-    canvas.addEventListener("mousedown", e => {
-      dibujando = true;
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
-    });
+    document.getElementById("continuarFirmas").addEventListener("click", () => {
+      const entrega = document.getElementById("entrega").value;
+      const recibe = document.getElementById("recibe").value;
+      const destino = document.getElementById("destino").value;
 
-    canvas.addEventListener("mousemove", e => {
-      if (dibujando) {
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.stroke();
+      if (!entrega || !recibe || !destino) {
+        alert("Por favor completa todos los campos antes de continuar.");
+        return;
       }
+
+      // Guardar en localStorage para pantalla 5
+      localStorage.setItem("entrega", entrega);
+      localStorage.setItem("recibe", recibe);
+      localStorage.setItem("destino", destino);
+
+      window.location.href = "pantalla5.html";
     });
 
-    canvas.addEventListener("mouseup", () => dibujando = false);
-    canvas.addEventListener("mouseleave", () => dibujando = false);
-
-    function limpiarFirma() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function guardarFirma() {
-      const firma = canvas.toDataURL("image/png");
-      localStorage.setItem("firmaEntrega", firma);
-      window.location.href = "pantalla5.html";
-    }
+    cargarResumen();
   </script>
 </body>
 </html>
