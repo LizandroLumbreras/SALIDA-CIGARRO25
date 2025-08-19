@@ -1,1 +1,151 @@
-<h1>Pantalla 2 - Buscador por Código</h1><a href='pantalla3.html'>Ir a Carrito</a>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscar Producto - Cigarro</title>
+
+  <!-- Fuente -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0; padding: 20px;
+      background: linear-gradient(to right, #00416A, #E4E5E6);
+      color: white;
+      min-height: 100vh;
+      position: relative;
+    }
+    .marca-agua {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.07;
+      z-index: 0;
+      max-width: 90%;
+      pointer-events: none;
+    }
+    .contenedor {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.9);
+      color: #00416A;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      position: relative;
+      z-index: 1;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00416A;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 12px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #00416A;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0c6cbd;
+    }
+    .resultado {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background: #f0f0f0;
+      display: none;
+    }
+    .resultado strong {
+      color: #00416A;
+    }
+  </style>
+</head>
+<body>
+  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
+
+  <div class="contenedor">
+    <h1>Buscar Producto</h1>
+
+    <label for="codigo">Escanea o escribe el código:</label>
+    <input type="text" id="codigo" autofocus placeholder="Código de barras...">
+
+    <div class="resultado" id="resultado">
+      <p><strong>Producto:</strong> <span id="nombre"></span></p>
+      <p><strong>Código:</strong> <span id="codigoMostrar"></span></p>
+      <p><strong>Cantidad:</strong></p>
+      <input type="number" id="cantidad" min="1" value="1">
+
+      <button onclick="agregarCarrito()">Agregar al carrito</button>
+    </div>
+
+    <button onclick="window.location.href='pantalla3.html'">Ver carrito</button>
+  </div>
+
+  <script>
+    const inputCodigo = document.getElementById('codigo');
+    const resultado = document.getElementById('resultado');
+    const nombre = document.getElementById('nombre');
+    const codigoMostrar = document.getElementById('codigoMostrar');
+    const cantidadInput = document.getElementById('cantidad');
+
+    // Simulación de búsqueda de producto (después conectamos Firebase)
+    const productos = {
+      "7501001234567": "Marlboro Rojo",
+      "7502009876543": "Camel Blue",
+      "7503001112224": "Delicados"
+    };
+
+    inputCodigo.addEventListener("change", () => {
+      const codigo = inputCodigo.value.trim();
+      if (productos[codigo]) {
+        nombre.textContent = productos[codigo];
+        codigoMostrar.textContent = codigo;
+        resultado.style.display = "block";
+      } else {
+        alert("Producto no encontrado");
+        resultado.style.display = "none";
+      }
+    });
+
+    function agregarCarrito() {
+      const producto = {
+        codigo: codigoMostrar.textContent,
+        nombre: nombre.textContent,
+        cantidad: cantidadInput.value
+      };
+
+      // Guardar en localStorage
+      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+      carrito.push(producto);
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+
+      alert("Producto agregado al carrito");
+      inputCodigo.value = "";
+      resultado.style.display = "none";
+    }
+  </script>
+</body>
+</html>
