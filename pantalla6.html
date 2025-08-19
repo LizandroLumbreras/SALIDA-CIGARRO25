@@ -3,43 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resumen Final - Salida Cigarro</title>
-
-  <!-- Fuente -->
+  <title>Resumen Salida - Cigarro</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 
   <style>
     body {
       font-family: 'Poppins', sans-serif;
+      margin: 0; padding: 20px;
       background: linear-gradient(to right,#00416A,#E4E5E6);
       color: white;
-      padding: 20px;
-      margin: 0;
       min-height: 100vh;
-    }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
+      box-sizing: border-box;
     }
     .contenedor {
-      background: white;
-      color: black;
       max-width: 800px;
       margin: auto;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,.25);
-      position: relative;
-      z-index: 1;
-    }
-    h1, h2 {
-      text-align: center;
+      background: white;
       color: #00416A;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
     }
     table {
       width: 100%;
@@ -50,7 +40,6 @@
       border: 1px solid #ccc;
       padding: 8px;
       text-align: center;
-      font-size: 14px;
     }
     th {
       background: #00416A;
@@ -58,58 +47,59 @@
     }
     .firmas {
       display: flex;
-      justify-content: space-between;
-      margin-top: 25px;
+      justify-content: space-around;
+      margin-top: 30px;
       flex-wrap: wrap;
     }
     .firma-box {
-      width: 45%;
       text-align: center;
+      margin: 10px;
     }
     .firma-box img {
+      max-width: 200px;
       border: 1px solid #ccc;
-      background: #f9f9f9;
-      max-width: 100%;
-      height: 120px;
+      background: white;
+      padding: 5px;
     }
     button {
-      display: block;
-      margin: 20px auto 0;
-      padding: 12px 20px;
-      background: #00416A;
-      color: white;
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 16px;
+      background: #00416A;
+      color: white;
+      transition: background 0.3s;
     }
     button:hover {
       background: #0c6cbd;
     }
-    @media print {
-      button { display: none; }
-      body { background: white; color: black; }
-      .contenedor { box-shadow: none; border: none; }
+    @media (max-width:600px){
+      body{padding:10px;}
+      .contenedor{padding:15px;}
+      table{font-size:14px;}
     }
   </style>
 </head>
 <body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
+  <div class="contenedor">
+    <h2>Resumen de Salida - Almacén Cigarro</h2>
 
-  <div class="contenedor" id="ticket">
-    <h1>Resumen de Salida - Almacén Cigarro</h1>
-    <p><b>Folio:</b> <span id="folio"></span></p>
-    <p><b>Fecha:</b> <span id="fecha"></span></p>
-    <p><b>Destino:</b> <span id="destino"></span></p>
-    <p><b>Entrega:</b> <span id="entrega"></span></p>
-    <p><b>Recibe:</b> <span id="recibe"></span></p>
+    <p><strong>Folio:</strong> <span id="folio"></span></p>
+    <p><strong>Fecha:</strong> <span id="fecha"></span></p>
+    <p><strong>Destino:</strong> <span id="destino"></span></p>
+    <p><strong>Entrega:</strong> <span id="entrega"></span></p>
+    <p><strong>Recibe:</strong> <span id="recibe"></span></p>
 
-    <h2>Productos</h2>
+    <h3>Productos</h3>
     <table>
       <thead>
         <tr>
           <th>Código</th>
-          <th>Descripción</th>
+          <th>Producto</th>
           <th>Cantidad</th>
         </tr>
       </thead>
@@ -118,58 +108,82 @@
 
     <div class="firmas">
       <div class="firma-box">
-        <p><b>Firma Quien Entrega</b></p>
+        <p>Entrega</p>
         <img id="firmaEntrega" alt="Firma Entrega">
         <p id="nombreEntrega"></p>
       </div>
       <div class="firma-box">
-        <p><b>Firma Quien Recibe</b></p>
+        <p>Recibe</p>
         <img id="firmaRecibe" alt="Firma Recibe">
         <p id="nombreRecibe"></p>
       </div>
     </div>
 
-    <button onclick="guardarImprimir()">Guardar, Imprimir y Descargar</button>
+    <button onclick="guardarSalida()">Guardar en Firebase</button>
+    <button onclick="window.print()">Imprimir Ticket</button>
   </div>
 
-  <script>
-    // Cargar datos desde localStorage
-    document.getElementById("folio").textContent = localStorage.getItem("folio") || "N/A";
-    document.getElementById("fecha").textContent = localStorage.getItem("fecha") || new Date().toLocaleString();
-    document.getElementById("destino").textContent = localStorage.getItem("destino") || "N/A";
-    document.getElementById("entrega").textContent = localStorage.getItem("entrega") || "N/A";
-    document.getElementById("recibe").textContent = localStorage.getItem("recibe") || "N/A";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    document.getElementById("nombreEntrega").textContent = localStorage.getItem("entrega") || "";
-    document.getElementById("nombreRecibe").textContent = localStorage.getItem("recibe") || "";
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.appspot.com",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
 
-    // Cargar firmas
-    document.getElementById("firmaEntrega").src = localStorage.getItem("firmaEntrega") || "";
-    document.getElementById("firmaRecibe").src = localStorage.getItem("firmaRecibe") || "";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    // Cargar productos
-    const productos = JSON.parse(localStorage.getItem("productos") || "[]");
+    // Recuperar datos de localStorage
+    const folio = localStorage.getItem("folio") || "SIN FOLIO";
+    const fecha = localStorage.getItem("fecha") || new Date().toLocaleString();
+    const destino = localStorage.getItem("destino") || "-";
+    const entrega = localStorage.getItem("entrega") || "-";
+    const recibe = localStorage.getItem("recibe") || "-";
+    const carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+
+    document.getElementById("folio").textContent = folio;
+    document.getElementById("fecha").textContent = fecha;
+    document.getElementById("destino").textContent = destino;
+    document.getElementById("entrega").textContent = entrega;
+    document.getElementById("recibe").textContent = recibe;
+
     const tabla = document.getElementById("tablaProductos");
-    productos.forEach(p => {
-      let fila = `<tr>
-                    <td>${p.codigo}</td>
-                    <td>${p.descripcion}</td>
-                    <td>${p.cantidad}</td>
-                  </tr>`;
+    carrito.forEach(p => {
+      const fila = `<tr>
+        <td>${p.codigo}</td>
+        <td>${p.nombre}</td>
+        <td>${p.cantidad}</td>
+      </tr>`;
       tabla.innerHTML += fila;
     });
 
-    function guardarImprimir() {
-      window.print();
+    // Firmas
+    document.getElementById("firmaEntrega").src = localStorage.getItem("firmaEntrega") || "";
+    document.getElementById("firmaRecibe").src = localStorage.getItem("firmaRecibe") || "";
+    document.getElementById("nombreEntrega").textContent = entrega;
+    document.getElementById("nombreRecibe").textContent = recibe;
 
-      // Descargar ticket como archivo HTML
-      const contenido = document.getElementById("ticket").outerHTML;
-      const blob = new Blob([contenido], { type: "text/html" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "ticket_salida.html";
-      link.click();
+    async function guardarSalida() {
+      try {
+        await addDoc(collection(db, "almacenes/almacen_cigarro/salidas"), {
+          folio, fecha, destino, entrega, recibe, carrito,
+          firmaEntrega: localStorage.getItem("firmaEntrega") || "",
+          firmaRecibe: localStorage.getItem("firmaRecibe") || ""
+        });
+        alert("Salida guardada en Firebase");
+        localStorage.clear();
+        window.location.href = "index.html";
+      } catch (e) {
+        alert("Error guardando en Firebase: " + e);
+      }
     }
+    window.guardarSalida = guardarSalida;
   </script>
 </body>
 </html>
