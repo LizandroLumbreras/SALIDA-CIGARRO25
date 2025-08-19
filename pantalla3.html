@@ -3,150 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carrito de Productos</title>
+  <title>Carrito de productos - Cigarro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      background: linear-gradient(to right, #00416A, #E4E5E6);
+      background: linear-gradient(to right,#00416A,#E4E5E6);
       margin: 0;
       padding: 20px;
+      color: white;
       min-height: 100vh;
       box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
-
     .contenedor {
+      max-width: 800px;
+      margin: auto;
       background: white;
+      color: #00416A;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      max-width: 800px;
-      width: 100%;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
     }
-
     h2 {
       text-align: center;
-      color: #00416A;
+      margin-bottom: 20px;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 15px;
     }
-
     th, td {
       border: 1px solid #ccc;
-      padding: 10px;
+      padding: 8px;
       text-align: center;
-      font-size: 14px;
     }
-
     th {
       background: #00416A;
       color: white;
     }
-
-    input[type="number"] {
-      width: 60px;
-      padding: 5px;
-      font-size: 14px;
-      text-align: center;
-    }
-
     button {
-      background: #00416A;
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: 0.3s;
-    }
-
-    button:hover {
-      background: #0c6cbd;
-    }
-
-    .acciones {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .btn-finalizar {
+      margin-top: 15px;
       width: 100%;
-      margin-top: 20px;
       padding: 12px;
       font-size: 16px;
       font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #00416A;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
       background: #0c6cbd;
+    }
+    .btn-secundario {
+      background: #888;
+    }
+    @media (max-width:600px){
+      body{padding:10px;}
+      .contenedor{padding:15px;}
+      table{font-size:14px;}
     }
   </style>
 </head>
 <body>
   <div class="contenedor">
     <h2>Carrito de Productos</h2>
+
     <table>
       <thead>
         <tr>
           <th>Código</th>
-          <th>Concepto</th>
-          <th>Marca</th>
+          <th>Producto</th>
           <th>Cantidad</th>
           <th>Acciones</th>
         </tr>
       </thead>
-      <tbody id="carritoBody"></tbody>
+      <tbody id="tablaCarrito"></tbody>
     </table>
 
-    <button class="btn-finalizar" id="finalizarBtn">Continuar al Resumen</button>
+    <button onclick="continuar()">Continuar al Resumen</button>
+    <button class="btn-secundario" onclick="agregarMas()">Agregar más artículos</button>
   </div>
 
   <script>
-    function cargarCarrito() {
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      const tbody = document.getElementById("carritoBody");
-      tbody.innerHTML = "";
+    let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
 
-      carrito.forEach((item, index) => {
-        const fila = document.createElement("tr");
-        fila.innerHTML = `
-          <td>${item.codigo}</td>
-          <td>${item.concepto || "-"}</td>
-          <td>${item.marca || "-"}</td>
-          <td><input type="number" min="1" value="${item.cantidad}" onchange="actualizarCantidad(${index}, this.value)"></td>
-          <td class="acciones">
-            <button onclick="eliminarProducto(${index})">Eliminar</button>
-          </td>
+    function renderCarrito() {
+      const tabla = document.getElementById("tablaCarrito");
+      tabla.innerHTML = "";
+      carrito.forEach((p, i) => {
+        tabla.innerHTML += `
+          <tr>
+            <td>${p.codigo}</td>
+            <td>${p.nombre}</td>
+            <td><input type="number" min="1" value="${p.cantidad}" onchange="cambiarCantidad(${i}, this.value)" style="width:60px;"></td>
+            <td><button onclick="eliminar(${i})">❌</button></td>
+          </tr>
         `;
-        tbody.appendChild(fila);
       });
-    }
-
-    function actualizarCantidad(index, nuevaCantidad) {
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      carrito[index].cantidad = parseInt(nuevaCantidad);
       localStorage.setItem("carrito", JSON.stringify(carrito));
-      cargarCarrito();
     }
 
-    function eliminarProducto(index) {
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      carrito.splice(index, 1);
+    function cambiarCantidad(i, cantidad) {
+      carrito[i].cantidad = parseInt(cantidad);
       localStorage.setItem("carrito", JSON.stringify(carrito));
-      cargarCarrito();
     }
 
-    document.getElementById("finalizarBtn").addEventListener("click", () => {
+    function eliminar(i) {
+      carrito.splice(i, 1);
+      renderCarrito();
+    }
+
+    function continuar() {
+      localStorage.setItem("carrito", JSON.stringify(carrito));
       window.location.href = "pantalla4.html";
-    });
+    }
 
-    // Cargar al iniciar
-    cargarCarrito();
+    function agregarMas() {
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+      window.location.href = "pantalla2.html";
+    }
+
+    renderCarrito();
   </script>
 </body>
 </html>
