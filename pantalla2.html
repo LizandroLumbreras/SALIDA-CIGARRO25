@@ -4,96 +4,55 @@
   <meta charset="UTF-8">
   <title>Pantalla 2 - Buscar Producto</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 🔹 Configuración Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-      authDomain: "inventariopv-643f1.firebaseapp.com",
-      projectId: "inventariopv-643f1",
-      storageBucket: "inventariopv-643f1.appspot.com",
-      messagingSenderId: "96242533231",
-      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // 🔹 Buscar producto por código
-    async function buscarProducto() {
-      const codigo = document.getElementById("codigoInput").value.trim();
-      if (!codigo) {
-        alert("Escribe o escanea un código de barras");
-        return;
-      }
-
-      try {
-        const q = query(collection(db, "productos"), where("codigoBarra", "==", codigo));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          alert("❌ Producto no encontrado en la base de datos.");
-          return;
-        }
-
-        let producto = null;
-        querySnapshot.forEach(doc => {
-          producto = { id: doc.id, ...doc.data() };
-        });
-
-        if (producto) {
-          // 🔹 Recuperar carrito existente o crear uno nuevo
-          let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-
-          // 🔹 Agregar producto encontrado al carrito
-          carrito.push({
-            codigo: producto.codigoBarra,
-            descripcion: producto.concepto,
-            marca: producto.marca || "SIN MARCA",
-            cantidad: 1  // se inicializa en 1
-          });
-
-          // 🔹 Guardar en localStorage
-          localStorage.setItem("carrito", JSON.stringify(carrito));
-
-          // 🔹 Redirigir a la pantalla del carrito
-          window.location.href = "pantalla3.html";
-        }
-      } catch (error) {
-        console.error("Error buscando producto:", error);
-        alert("⚠️ Error al consultar la base de datos.");
-      }
-    }
-
-    window.buscarProducto = buscarProducto;
-  </script>
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(to right, #00416A, #E4E5E6);
-      color: white;
-      padding: 20px;
-      text-align: center;
-      min-height: 100vh;
+      background: linear-gradient(to right,#00416A,#E4E5E6);
+      margin:0; padding:20px; color:white; min-height:100vh;
+      position: relative;
     }
+
+    /* Marca de agua como en Zapata */
+    body::before {
+      content:"";
+      position: fixed;
+      top:50%; left:50%;
+      width:80%; height:80%;
+      background: url('logo_proveedora.png') no-repeat center center;
+      background-size: contain;
+      opacity: 0.07;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
     .contenedor {
       max-width: 500px;
       margin: auto;
       background: white;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
       color: black;
+      text-align: center;
+      position: relative;
+      z-index: 1;
     }
+
     input {
       width: 100%;
       padding: 10px;
       font-size: 16px;
       margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
+
     button {
       padding: 10px 20px;
       background: #00416A;
@@ -101,7 +60,9 @@
       border: none;
       cursor: pointer;
       border-radius: 6px;
+      font-size: 16px;
     }
+
     button:hover {
       background: #006699;
     }
@@ -113,5 +74,65 @@
     <input type="text" id="codigoInput" placeholder="Escanea o escribe el código de barras">
     <button onclick="buscarProducto()">Agregar al carrito</button>
   </div>
+
+  <script>
+    // 🔹 Configuración Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.appspot.com",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // 🔹 Buscar producto por código
+    async function buscarProducto() {
+      const codigo = document.getElementById("codigoInput").value.trim();
+      if (!codigo) {
+        alert("Escribe o escanea un código de barras");
+        return;
+      }
+
+      try {
+        const snapshot = await db.collection("productos").where("codigoBarra","==",codigo).get();
+
+        if (snapshot.empty) {
+          alert("❌ Producto no encontrado en la base de datos.");
+          return;
+        }
+
+        let producto = null;
+        snapshot.forEach(doc => {
+          producto = { id: doc.id, ...doc.data() };
+        });
+
+        if (producto) {
+          // 🔹 Recuperar carrito existente o crear uno nuevo
+          let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+
+          // 🔹 Agregar producto encontrado
+          carrito.push({
+            codigo: producto.codigoBarra,
+            descripcion: producto.concepto,
+            marca: producto.marca || "SIN MARCA",
+            cantidad: 1
+          });
+
+          // 🔹 Guardar en localStorage
+          localStorage.setItem("carrito", JSON.stringify(carrito));
+
+          // 🔹 Redirigir a pantalla3.html
+          window.location.href = "pantalla3.html";
+        }
+      } catch (error) {
+        console.error("Error buscando producto:", error);
+        alert("⚠️ Error al consultar la base de datos.");
+      }
+    }
+  </script>
 </body>
 </html>
