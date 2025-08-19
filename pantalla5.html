@@ -3,117 +3,168 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firma - Quien Recibe</title>
-
-  <!-- Fuente -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
+  <title>Firmas</title>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      margin: 0; padding: 20px;
       background: linear-gradient(to right, #00416A, #E4E5E6);
-      color: white;
+      margin: 0;
+      padding: 20px;
       min-height: 100vh;
+      box-sizing: border-box;
       display: flex;
-      align-items: center;
       justify-content: center;
-      flex-direction: column;
+      align-items: flex-start;
     }
-    .marca-agua {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.07;
-      z-index: 0;
-      max-width: 90%;
-      pointer-events: none;
-    }
+
     .contenedor {
-      max-width: 700px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.95);
-      color: #00416A;
+      background: white;
       padding: 20px;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      position: relative;
-      z-index: 1;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    h2 {
+      text-align: center;
+      color: #00416A;
+    }
+
+    .firma-box {
+      margin-top: 20px;
       text-align: center;
     }
-    h1 {
-      margin-bottom: 15px;
-    }
+
     canvas {
       border: 2px solid #00416A;
-      border-radius: 6px;
-      background: white;
+      border-radius: 8px;
       width: 100%;
-      height: 250px;
+      max-width: 380px;
+      height: 180px;
+      background: #f9f9f9;
     }
+
     button {
-      margin: 8px;
+      margin-top: 15px;
       padding: 10px 16px;
-      font-size: 15px;
+      background: #00416A;
+      color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      background: #00416A;
-      color: white;
-      transition: background 0.3s;
+      font-size: 14px;
+      transition: 0.3s;
     }
+
     button:hover {
       background: #0c6cbd;
+    }
+
+    .btn-guardar {
+      margin-top: 25px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <img src="logo_proveedora.png" class="marca-agua" alt="Logo">
-
   <div class="contenedor">
-    <h1>Firma - Quien Recibe</h1>
-    <canvas id="canvasFirma"></canvas>
-    <div>
-      <button onclick="limpiarFirma()">Limpiar</button>
-      <button onclick="guardarFirma()">Continuar</button>
+    <h2>Firmas</h2>
+
+    <!-- Firma entrega -->
+    <div class="firma-box">
+      <p><strong>Firma de quien entrega:</strong> <span id="nombreEntrega"></span></p>
+      <canvas id="firmaEntrega"></canvas><br>
+      <button onclick="limpiar('firmaEntrega')">Limpiar</button>
     </div>
+
+    <!-- Firma recibe -->
+    <div class="firma-box">
+      <p><strong>Firma de quien recibe:</strong> <span id="nombreRecibe"></span></p>
+      <canvas id="firmaRecibe"></canvas><br>
+      <button onclick="limpiar('firmaRecibe')">Limpiar</button>
+    </div>
+
+    <button class="btn-guardar" onclick="guardarFirmas()">Guardar y Continuar</button>
   </div>
 
   <script>
-    const canvas = document.getElementById("canvasFirma");
-    const ctx = canvas.getContext("2d");
-    let dibujando = false;
+    let ctxEntrega, ctxRecibe, dibujando = false;
 
-    function ajustarCanvas() {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = 250;
-    }
-    ajustarCanvas();
+    function prepararCanvas(id) {
+      const canvas = document.getElementById(id);
+      const ctx = canvas.getContext("2d");
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 2;
 
-    canvas.addEventListener("mousedown", e => {
-      dibujando = true;
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
-    });
+      function comenzarDibujo(e) {
+        dibujando = true;
+        ctx.beginPath();
+        ctx.moveTo(e.offsetX, e.offsetY);
+      }
 
-    canvas.addEventListener("mousemove", e => {
-      if (dibujando) {
+      function dibujar(e) {
+        if (!dibujando) return;
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.stroke();
       }
-    });
 
-    canvas.addEventListener("mouseup", () => dibujando = false);
-    canvas.addEventListener("mouseleave", () => dibujando = false);
+      function terminarDibujo() {
+        dibujando = false;
+      }
 
-    function limpiarFirma() {
+      canvas.addEventListener("mousedown", comenzarDibujo);
+      canvas.addEventListener("mousemove", dibujar);
+      canvas.addEventListener("mouseup", terminarDibujo);
+      canvas.addEventListener("mouseout", terminarDibujo);
+
+      // Soporte táctil
+      canvas.addEventListener("touchstart", e => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        ctx.beginPath();
+        ctx.moveTo(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        dibujando = true;
+      });
+
+      canvas.addEventListener("touchmove", e => {
+        e.preventDefault();
+        if (!dibujando) return;
+        const rect = canvas.getBoundingClientRect();
+        ctx.lineTo(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        ctx.stroke();
+      });
+
+      canvas.addEventListener("touchend", () => dibujando = false);
+
+      return ctx;
+    }
+
+    function limpiar(id) {
+      const canvas = document.getElementById(id);
+      const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function guardarFirma() {
-      const firma = canvas.toDataURL("image/png");
-      localStorage.setItem("firmaRecibe", firma);
-      window.location.href = "pantalla6.html";
+    function guardarFirmas() {
+      const firmaEntrega = document.getElementById("firmaEntrega").toDataURL();
+      const firmaRecibe = document.getElementById("firmaRecibe").toDataURL();
+
+      localStorage.setItem("firmaEntrega", firmaEntrega);
+      localStorage.setItem("firmaRecibe", firmaRecibe);
+
+      window.location.href = "pantalla6.html"; // Ir al resumen final
+    }
+
+    // Inicializar
+    window.onload = () => {
+      document.getElementById("nombreEntrega").innerText = localStorage.getItem("entrega") || "-";
+      document.getElementById("nombreRecibe").innerText = localStorage.getItem("recibe") || "-";
+
+      ctxEntrega = prepararCanvas("firmaEntrega");
+      ctxRecibe = prepararCanvas("firmaRecibe");
     }
   </script>
 </body>
