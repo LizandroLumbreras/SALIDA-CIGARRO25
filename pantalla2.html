@@ -5,9 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buscar Producto - Cigarro</title>
 
-  <!-- Fuente -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+    // Tu configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.appspot.com",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Referencias a los elementos
+    const inputCodigo = document.getElementById('codigo');
+    const resultado = document.getElementById('resultado');
+    const nombre = document.getElementById('nombre');
+    const codigoMostrar = document.getElementById('codigoMostrar');
+    const cantidadInput = document.getElementById('cantidad');
+
+    // Buscar producto en Firestore al presionar Enter
+    inputCodigo.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter") {
+        const codigo = inputCodigo.value.trim();
+        if (!codigo) return;
+
+        const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            nombre.textContent = data.Nombre || "Sin nombre";
+            codigoMostrar.textContent = data["Codigo Barra"];
+            resultado.style.display = "block";
+            cantidadInput.focus();
+          });
+        } else {
+          alert("Producto no encontrado en Firebase");
+          resultado.style.display = "none";
+        }
+      }
+    });
+
+    // Agregar al carrito
+    window.agregarCarrito = function() {
+      const producto = {
+        codigo: codigoMostrar.textContent,
+        nombre: nombre.textContent,
+        cantidad: cantidadInput.value
+      };
+
+      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+      carrito.push(producto);
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+
+      alert("Producto agregado al carrito");
+
+      inputCodigo.value = "";
+      resultado.style.display = "none";
+      inputCodigo.focus();
+    };
+  </script>
+
+  <!-- Estilos -->
   <style>
     body {
       font-family: 'Poppins', sans-serif;
@@ -103,49 +170,5 @@
 
     <button onclick="window.location.href='pantalla3.html'">Ver carrito</button>
   </div>
-
-  <script>
-    const inputCodigo = document.getElementById('codigo');
-    const resultado = document.getElementById('resultado');
-    const nombre = document.getElementById('nombre');
-    const codigoMostrar = document.getElementById('codigoMostrar');
-    const cantidadInput = document.getElementById('cantidad');
-
-    // Simulación de búsqueda de producto (después conectamos Firebase)
-    const productos = {
-      "7501001234567": "Marlboro Rojo",
-      "7502009876543": "Camel Blue",
-      "7503001112224": "Delicados"
-    };
-
-    inputCodigo.addEventListener("change", () => {
-      const codigo = inputCodigo.value.trim();
-      if (productos[codigo]) {
-        nombre.textContent = productos[codigo];
-        codigoMostrar.textContent = codigo;
-        resultado.style.display = "block";
-      } else {
-        alert("Producto no encontrado");
-        resultado.style.display = "none";
-      }
-    });
-
-    function agregarCarrito() {
-      const producto = {
-        codigo: codigoMostrar.textContent,
-        nombre: nombre.textContent,
-        cantidad: cantidadInput.value
-      };
-
-      // Guardar en localStorage
-      let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
-      carrito.push(producto);
-      localStorage.setItem("carrito", JSON.stringify(carrito));
-
-      alert("Producto agregado al carrito");
-      inputCodigo.value = "";
-      resultado.style.display = "none";
-    }
-  </script>
 </body>
 </html>
