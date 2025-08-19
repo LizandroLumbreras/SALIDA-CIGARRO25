@@ -11,9 +11,9 @@
   <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // 🔹 CONFIGURA TU FIREBASE (usa tus datos reales)
+    // 🔹 CONFIGURA TU FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -30,24 +30,25 @@
       const folioInput = document.getElementById("folio");
 
       try {
-        // 🔹 Leer consecutivo del almacen cigarro
-        const ref = doc(db, "consecutivos", "almacen_cigarro");
+        // 🔹 Documento dentro de la subcolección
+        const ref = doc(db, "consecutivos/salidas_cigarro/folio");
         const snap = await getDoc(ref);
 
-        let nuevoFolio = "SALCIG-0001"; // Valor inicial
+        let nuevoFolio = "SALCIG-0001"; // valor inicial
 
         if (snap.exists()) {
           let actual = snap.data().ultimoFolio || 0;
           let siguiente = actual + 1;
 
-          // Formato con ceros -> SALCIG-000X
+          // Formato -> SALCIG-000X
           nuevoFolio = "SALCIG-" + String(siguiente).padStart(4, "0");
 
-          // 🔹 Actualizar en Firebase el nuevo consecutivo
+          // 🔹 Actualizar en Firebase
           await updateDoc(ref, { ultimoFolio: siguiente });
         } else {
-          // Si no existe el documento, creamos uno inicial
+          // Si no existe, creamos el doc inicial
           await setDoc(ref, { ultimoFolio: 1 });
+          nuevoFolio = "SALCIG-0001";
         }
 
         // Mostrar en input y guardar en localStorage
@@ -64,11 +65,11 @@
     });
 
     // 🔹 Guardar datos en localStorage antes de pasar a pantalla2
-    function guardarDatos() {
+    window.guardarDatos = function () {
       localStorage.setItem("destino", document.getElementById("destino").value);
       localStorage.setItem("entrega", document.getElementById("entrega").value);
       localStorage.setItem("recibe", document.getElementById("recibe").value);
-      return true; // continuar submit
+      return true;
     }
   </script>
 
