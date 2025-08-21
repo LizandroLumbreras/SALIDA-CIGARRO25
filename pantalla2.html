@@ -44,10 +44,20 @@
     firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
 
+    // --- Estado / refs DOM ---
     let productoSeleccionado=null;
-    const pad13=s=>String(s).replace(/\s+/g,'').padStart(13,'0');
-    const norm=s=>String(s).trim().replace(/[\s\r\n]+/g,'');
-    const upper=s=>String(s||'').toUpperCase();
+    const buscador     = document.getElementById('buscador');
+    const infoProducto = document.getElementById('infoProducto');
+    const descripcion  = document.getElementById('descripcion');
+    const codigo       = document.getElementById('codigo');
+    const cantidad     = document.getElementById('cantidad');
+    const verCarritoBtn= document.getElementById('verCarritoBtn');
+    const btnAgregar   = document.getElementById('btnAgregar');
+
+    // --- Utils ---
+    const pad13  = s=>String(s).replace(/\s+/g,'').padStart(13,'0');
+    const norm   = s=>String(s).trim().replace(/[\s\r\n\t]+/g,'');
+    const upper  = s=>String(s||'').toUpperCase();
 
     function mostrarProducto(p){
       productoSeleccionado=p;
@@ -58,67 +68,120 @@
       cantidad.focus();
     }
     function ocultar(){productoSeleccionado=null;infoProducto.style.display='none';}
-    function actualizarBoton(){const prods=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');verCarritoBtn.style.display=prods.length>0?'block':'none';}
+    function actualizarBoton(){
+      const prods=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
+      verCarritoBtn.style.display=prods.length>0?'block':'none';
+    }
 
-    const buscador=document.getElementById('buscador');
-    const infoProducto=document.getElementById('infoProducto');
-    const descripcion=document.getElementById('descripcion');
-    const codigo=document.getElementById('codigo');
-    const cantidad=document.getElementById('cantidad');
-    const verCarritoBtn=document.getElementById('verCarritoBtn');
+    // ====== Antiduplicados / Handlers blindados ======
+    const SCAN_DEBOUNCE_MS = 800;   // ventana para ignorar misma lectura
+    const TYPE_MS          = 300;   // debounce para nombre
 
-    const SCAN_DEBOUNCE_MS=700; let lastScan=''; let lastAt=0;
-    let typingTimer=null; const TYPE_MS=300;
+    // Evita enganchar dos veces si el script llega a evaluarse de nuevo
+    if (!window.__scannerHandlersBoundCigarro) {
+      window.__scannerHandlersBoundCigarro = true;
 
-    buscador.addEventListener('keydown',async(e)=>{
-      if(e.key!=='Enter')return;
-      const raw=buscador.value.replace(/[\r\n]+/g,''); const t=norm(raw); buscador.value='';
-      if(!t)return;
-      const now=Date.now(); if(t===lastScan && (now-lastAt)<SCAN_DEBOUNCE_MS) return; lastScan=t; lastAt=now;
+      let lastScan = '';
+      let lastAt   = 0;
+      let typingTimer = null;
+      let processing  = false; // candado
 
-      if(/^\d+$/.test(t)){ const ok=await buscarPorCodigo(t); if(!ok) await buscarPorNombre(t); }
-      else{ await buscarPorNombre(t); }
-    });
+      // foco al cargar
+      window.addEventListener('DOMContentLoaded', ()=> buscador && buscador.focus());
 
-    buscador.addEventListener('input',()=>{
-      const v=buscador.value.trim();
-      if(typingTimer) clearTimeout(typingTimer);
-      if(v.length<2){ocultar();return;}
-      if(/^\d{6,}$/.test(v)) return;
-      typingTimer=setTimeout(()=>buscarPorNombre(v),TYPE_MS);
-    });
+      // ESCÁNER: Enter / NumpadEnter / Tab
+      buscador.addEventListener('keydown', async(e)=>{
+        const isSubmitKey = (e.key==='Enter' || e.code==='NumpadEnter' || e.key==='Tab');
+        if(!isSubmitKey) return;
+        if(e.repeat) return;             // evita repeticiones por key holding
+        e.preventDefault();
+        e.stopPropagation();
 
+        const raw = (buscador.value||'').replace(/[\r\n\t]+/g,'');
+        const t   = norm(raw);
+        buscador.value='';               // limpia inmediatamente
+        if(!t) return;
+
+        const now = Date.now();
+        if(t===lastScan && (now-lastAt)<SCAN_DEBOUNCE_MS) return;
+        if(processing) return;
+        lastScan = t; lastAt = now; processing = true;
+
+        try{
+          if(/^\d+$/.test(t)){
+            const ok = await buscarPorCodigo(t);
+            if(!ok) await buscarPorNombre(t);
+          }else{
+            await buscarPorNombre(t);
+          }
+        }catch(err){
+          console.error('[scanner]',err);
+        }finally{
+          processing=false;
+        }
+      });
+
+      // TECLADO manual: búsqueda por nombre con debounce
+      buscador.addEventListener('input', ()=>{
+        if(typingTimer) clearTimeout(typingTimer);
+        const v = (buscador.value||'').trim();
+        if(v.length<2){ ocultar(); return; }
+        if(/^\d{6,}$/.test(v)) return; // parece código -> esperar Enter/Tab
+        typingTimer = setTimeout(()=>buscarPorNombre(v), TYPE_MS);
+      });
+
+      // Limpia CR/LF/TAB si el escáner los deja
+      buscador.addEventListener('change', ()=>{
+        buscador.value = (buscador.value||'').replace(/[\r\n\t]+/g,'');
+      });
+    }
+
+    // ====== Búsquedas abiertas (sin filtros de depto para Cigarro) ======
     async function buscarPorCodigo(code){
       try{
+        // docId directo
         const byId=await db.collection('productos').doc(code).get();
-        if(byId.exists){mostrarProducto({id:byId.id,...byId.data()});return true;}
+        if(byId.exists){ mostrarProducto({id:byId.id,...byId.data()}); return true; }
+
+        // codigoBarra exacto / pad13
         const v1=code, v2=pad13(code);
         let q=await db.collection('productos').where('codigoBarra','==',v1).limit(1).get();
         if(q.empty && v2!==v1) q=await db.collection('productos').where('codigoBarra','==',v2).limit(1).get();
-        if(!q.empty){const doc=q.docs[0];mostrarProducto({id:doc.id,...doc.data()});return true;}
+
+        if(!q.empty){ const doc=q.docs[0]; mostrarProducto({id:doc.id,...doc.data()}); return true; }
         ocultar(); return false;
-      }catch(e){console.error(e); ocultar(); return false;}
+      }catch(e){ console.error(e); ocultar(); return false; }
     }
 
     async function buscarPorNombre(text){
       try{
         const pref=upper(text);
-        const q=await db.collection('productos').where('concepto','>=',pref).where('concepto','<=',pref+'\uf8ff').limit(20).get();
-        if(!q.empty){const d=q.docs[0];mostrarProducto({id:d.id,...d.data()});} else ocultar();
-      }catch(e){console.error(e); ocultar();}
+        const q=await db.collection('productos')
+          .where('concepto','>=',pref)
+          .where('concepto','<=',pref+'\uf8ff')
+          .limit(20).get();
+
+        if(!q.empty){ const d=q.docs[0]; mostrarProducto({id:d.id,...d.data()}); }
+        else ocultar();
+      }catch(e){ console.error(e); ocultar(); }
     }
 
+    // Agregar al carrito
     btnAgregar.addEventListener('click',()=>{
       const cant=parseFloat(cantidad.value);
-      if(!cant || cant<=0 || !productoSeleccionado){alert('Verifica los datos'); return;}
-      const d=productoSeleccionado; const unidad=d.unidadMedidaSat||d.unidad||d.uMedida||'N/D';
+      if(!cant || cant<=0 || !productoSeleccionado){
+        alert('Verifica los datos'); return;
+      }
+      const d=productoSeleccionado;
+      const unidad=d.unidadMedidaSat||d.unidad||d.uMedida||'N/D';
       const arr=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
       arr.push({id:d.id,codigo:d.codigoBarra||d.id||'',descripcion:d.concepto||'Sin descripción',unidad,cantidad:cant});
       localStorage.setItem('carrito_cigarro',JSON.stringify(arr));
-      ocultar(); buscador.value=''; cantidad.value=''; actualizarBoton();
+      ocultar(); buscador.value=''; cantidad.value=''; actualizarBoton(); buscador.focus();
     });
 
-    function irAlCarrito(){window.location.href='pantalla3.html'}; window.irAlCarrito=irAlCarrito;
+    function irAlCarrito(){window.location.href='pantalla3.html'}
+    window.irAlCarrito=irAlCarrito;
 
     actualizarBoton();
   </script>
