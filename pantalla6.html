@@ -108,36 +108,28 @@
       tbody.appendChild(tr);
     });
 
-    // ==== Generar folio con transacción ====
+    // ==== Generar folio con transacción (siempre) ====
     const CONSEC_COL = 'consecutivos';
-    const CONSEC_DOC = 'salidas_cigarro';
+    const CONSEC_DOC = 'salidas_cigarro'; // ← ajusta si tu doc se llama diferente
     const pad = n => String(n).padStart(4,'0');
 
     async function getNextFolio(){
       const ref = db.collection(CONSEC_COL).doc(CONSEC_DOC);
       const numero = await db.runTransaction(async (tx)=>{
         const snap = await tx.get(ref);
-        if(!snap.exists){
-          tx.set(ref,{ultimo:1});
-          return 1;
-        }else{
-          const cur = Number(snap.data().ultimo||0);
-          const next = cur + 1;
-          tx.update(ref,{ultimo:next});
-          return next;
-        }
+        const cur  = snap.exists ? Number(snap.data().ultimo || 0) : 0;
+        const next = cur + 1;
+        if (snap.exists) { tx.update(ref, { ultimo: next }); }
+        else { tx.set(ref, { ultimo: next }); }
+        return next;
       });
       return `SAL-CIG-${pad(numero)}`;
     }
 
     // ==== Guardar salida en Firestore (con folio asegurado) ====
     async function guardarSalidaConFolio(){
-      let folioFinal = (datos.folio||'').toString().trim();
-      if(!folioFinal){
-        folioFinal = await getNextFolio();
-        datos.folio = folioFinal;
-        localStorage.setItem('salidaCigarro', JSON.stringify(datos));
-      }
+      // SIEMPRE genera folio nuevo (no reutiliza localStorage)
+      const folioFinal = await getNextFolio();
       $folio.textContent = folioFinal;
 
       const data = {
@@ -156,6 +148,13 @@
         .doc('almacen_cigarro')
         .collection('salidas')
         .add(data);
+
+      // Limpia el folio de localStorage para el siguiente flujo
+      try {
+        const tmp = JSON.parse(localStorage.getItem('salidaCigarro') || '{}');
+        delete tmp.folio;
+        localStorage.setItem('salidaCigarro', JSON.stringify(tmp));
+      } catch(_) {}
 
       return folioFinal;
     }
@@ -209,14 +208,12 @@
         pdf.text(`Entrega: ${$entrega.textContent||''}`, 10, y); y+=6;
         pdf.text(`Recibe: ${$recibe.textContent||''}`, 10, y); y+=6;
         pdf.text(`Destino: ${$destino.textContent||''}`, 10, y); y+=8;
-
         pdf.text('Productos:', 10, y); y+=6;
         (productos||[]).forEach(p=>{
           const line = `${p.codigo??''} | ${p.descripcion??''} | ${p.unidad??''} | Cant: ${p.cantidad??0}`;
           pdf.text(line.substring(0,100), 10, y); y+=5;
           if(y>280){ pdf.addPage(); y=10; }
         });
-
         const nombre = `Comprobante_${($folio.textContent||'SAL-CIG').replace(/\s+/g,'_')}.pdf`;
         pdf.save(nombre);
       }
@@ -251,9 +248,6 @@
     }
 
     btn.addEventListener('click', guardarYDescargar);
-
-    // Si ya traías folio de pantallas anteriores, muéstralo
-    if(datos.folio){ $folio.textContent = datos.folio; }
   </script>
 </body>
 </html>
