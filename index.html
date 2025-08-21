@@ -43,7 +43,7 @@
       <option>ELOY SANCHEZ AVENDAÑO</option>
       <option>LUIS MIGUEL MEDELLIN ESCALONA</option>
       <option>SERGIO BECERRA MARAVILLA</option>
-      <option>RAMIRO ROQUE GONZALEZ</option>.
+      <option>RAMIRO ROQUE GONZALEZ</option>
       <option>CHRISTHOFER AARON DAVILA VALDEZ</option>
     </select>
 
@@ -64,25 +64,37 @@
       <option>RUTA 1</option>
     </select>
 
-    <button class="boton" onclick="continuar()">Continuar</button>
+    <button class="boton" id="btnContinuar">Continuar</button>
   </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <script>
-    const firebaseConfig = { apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM", authDomain:"inventariopv-643f1.firebaseapp.com", projectId:"inventariopv-643f1", storageBucket:"inventariopv-643f1.appspot.com", messagingSenderId:"96242533231", appId:"1:96242533231:web:aae75a18fbaf9840529e9a" };
+    const firebaseConfig = { 
+      apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM", 
+      authDomain:"inventariopv-643f1.firebaseapp.com", 
+      projectId:"inventariopv-643f1", 
+      storageBucket:"inventariopv-643f1.appspot.com", 
+      messagingSenderId:"96242533231", 
+      appId:"1:96242533231:web:aae75a18fbaf9840529e9a" 
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // 🔎 Solo LEE el consecutivo y muestra el próximo (no lo incrementa)
     async function cargarFolio(){
-      const docRef = db.collection("consecutivos").doc("salidas_cigarro");
-      const snap = await docRef.get();
-      let numero = 1;
-      if (snap.exists) numero = snap.data().ultimo || 1;
-      const folio = "SAL-CIG-" + String(numero).padStart(4,"0");
-      document.getElementById("proximoFolio").textContent = folio;
-      localStorage.setItem("folioCigarro", folio);
+      try{
+        const docRef = db.collection("consecutivos").doc("salidas_cigarro");
+        const snap = await docRef.get();
+        const ultimo = snap.exists ? Number(snap.data().ultimo || 0) : 0;
+        const proximo = ultimo + 1; // ← PROXIMO folio, no el actual
+        const folio = "SAL-CIG-" + String(proximo).padStart(4,"0");
+        document.getElementById("proximoFolio").textContent = folio;
+      }catch(e){
+        console.error(e);
+        document.getElementById("proximoFolio").textContent = "N/D";
+      }
     }
 
     function ponerFechaHoy(){
@@ -97,13 +109,21 @@
       const entrega = document.getElementById("entrega").value;
       const recibe  = document.getElementById("recibe").value;
       const destino = document.getElementById("destino").value;
-      const folio   = localStorage.getItem("folioCigarro");
       const fecha   = localStorage.getItem("fechaCigarro");
-      if(!entrega || !recibe || !destino){ alert("Completa todos los campos."); return; }
-      localStorage.setItem("salidaCigarro", JSON.stringify({folio,fecha,entrega,recibe,destino}));
+
+      if(!entrega || !recibe || !destino){ 
+        alert("Completa todos los campos."); 
+        return; 
+      }
+
+      // Guardamos SOLO datos operativos (sin folio)
+      localStorage.setItem("salidaCigarro", JSON.stringify({fecha,entrega,recibe,destino}));
+
+      // A la pantalla 2
       window.location.href = "pantalla2.html";
     }
 
+    document.getElementById("btnContinuar").addEventListener("click", continuar);
     document.addEventListener("DOMContentLoaded", ()=>{cargarFolio();ponerFechaHoy();});
   </script>
 </body>
