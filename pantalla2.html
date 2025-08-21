@@ -1,84 +1,126 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Buscador de Productos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    // 🔹 Configuración Firebase (ya con tu proyecto inventariopv-643f1)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-      authDomain: "inventariopv-643f1.firebaseapp.com",
-      projectId: "inventariopv-643f1",
-      storageBucket: "inventariopv-643f1.appspot.com",
-      messagingSenderId: "96242533231",
-      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    async function buscarProducto(){
-      const codigo = document.getElementById("codigo").value.trim();
-      if(!codigo) return alert("Ingrese un código");
-
-      const q = query(collection(db, "productos"), where("Codigo Barra", "==", codigo));
-      const querySnapshot = await getDocs(q);
-
-      if(querySnapshot.empty){
-        document.getElementById("resultado").innerHTML = "<p style='color:red'>Producto no encontrado</p>";
-        return;
-      }
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        document.getElementById("resultado").innerHTML = `
-          <h3>${data.Descripcion || "Sin descripción"}</h3>
-          <p><b>Código:</b> ${data["Codigo Barra"]}</p>
-          <p><b>Unidad:</b> ${data.Unidad || "N/A"}</p>
-          <label>Cantidad:</label>
-          <input type="number" id="cantidad" min="1" value="1">
-          <button onclick="agregarCarrito('${data["Codigo Barra"]}','${data.Descripcion}')">➕ Agregar al Carrito</button>
-        `;
-      });
-    }
-
-    window.agregarCarrito = function(codigo,descripcion){
-      const cantidad = document.getElementById("cantidad").value;
-      if(cantidad <= 0) return alert("Cantidad inválida");
-
-      let carrito = JSON.parse(localStorage.getItem("carritoCigarro")) || [];
-      carrito.push({codigo, descripcion, cantidad});
-      localStorage.setItem("carritoCigarro", JSON.stringify(carrito));
-
-      alert("Producto agregado ✔️");
-      document.getElementById("codigo").value = "";
-      document.getElementById("resultado").innerHTML = "";
-    }
-  </script>
+  <meta charset="UTF-8" />
+  <title>Buscar productos - Cigarro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body{font-family:Poppins,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white}
-    .contenedor{background:white;color:#00416A;max-width:800px;margin:auto;padding:20px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
-    input{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:1px solid #ccc}
-    button{margin-top:12px;padding:10px 15px;background:#00416A;color:white;border:none;border-radius:8px;cursor:pointer}
-    #resultado{margin-top:15px}
-    .acciones{margin-top:20px;display:flex;justify-content:space-between}
+    body{font-family:Arial,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white;min-height:100vh;box-sizing:border-box;position:relative}
+    .marca-agua{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);opacity:.07;z-index:0;max-width:90%;pointer-events:none}
+    .contenedor{max-width:700px;margin:auto;background:rgba(255,255,255,.1);border-radius:10px;padding:20px;z-index:1;position:relative}
+    h2{text-align:center;margin-bottom:20px}
+    input[type="text"],input[type="number"]{width:100%;padding:10px;margin:10px 0;border-radius:6px;border:none;font-size:16px}
+    .info-producto{background:white;color:black;padding:15px;border-radius:10px;margin-top:10px;display:none}
+    .info-producto strong{display:block;margin-bottom:5px}
+    button{background:#e60000;color:white;border:none;padding:12px;width:100%;border-radius:6px;font-size:16px;cursor:pointer;margin-top:10px}
+    button:hover{background:#b00000}
+    .ayuda{font-size:12px;opacity:.9;margin-top:-6px}
   </style>
 </head>
 <body>
+  <img src="logo_proveedora.webp" class="marca-agua" alt="Marca de agua">
+
   <div class="contenedor">
-    <h2>🔎 Buscar Producto (Almacén CIGARRO)</h2>
-    <input type="text" id="codigo" placeholder="Escanea o escribe el código">
-    <button onclick="buscarProducto()">Buscar</button>
+    <h2>Buscar producto</h2>
+    <p class="ayuda">Escribe un <b>código</b> o el <b>inicio</b> del nombre (ej. "MARLBORO", "CAJA").</p>
 
-    <div id="resultado"></div>
+    <input id="buscador" type="text" placeholder="Buscar por código o nombre..." autofocus autocomplete="off" autocapitalize="off" spellcheck="false"/>
 
-    <div class="acciones">
-      <button onclick="window.location.href='pantalla3.html'">➡️ Ir al Carrito</button>
+    <div class="info-producto" id="infoProducto">
+      <strong id="descripcion"></strong>
+      <div id="codigo"></div>
+      <input type="number" id="cantidad" placeholder="Cantidad a retirar" step="0.001" min="0.001">
+      <button id="btnAgregar">Agregar</button>
     </div>
+
+    <button id="verCarritoBtn" onclick="irAlCarrito()" style="display:none;">Ver Carrito 🛒</button>
   </div>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig={apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",authDomain:"inventariopv-643f1.firebaseapp.com",projectId:"inventariopv-643f1",storageBucket:"inventariopv-643f1.appspot.com",messagingSenderId:"96242533231",appId:"1:96242533231:web:aae75a18fbaf9840529e9a"};
+    firebase.initializeApp(firebaseConfig);
+    const db=firebase.firestore();
+
+    let productoSeleccionado=null;
+    const pad13=s=>String(s).replace(/\s+/g,'').padStart(13,'0');
+    const norm=s=>String(s).trim().replace(/[\s\r\n]+/g,'');
+    const upper=s=>String(s||'').toUpperCase();
+
+    function mostrarProducto(p){
+      productoSeleccionado=p;
+      descripcion.textContent=p.concepto||'Sin descripción';
+      codigo.textContent='Código: '+(p.codigoBarra||p.id||'');
+      cantidad.value='';
+      infoProducto.style.display='block';
+      cantidad.focus();
+    }
+    function ocultar(){productoSeleccionado=null;infoProducto.style.display='none';}
+    function actualizarBoton(){const prods=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');verCarritoBtn.style.display=prods.length>0?'block':'none';}
+
+    const buscador=document.getElementById('buscador');
+    const infoProducto=document.getElementById('infoProducto');
+    const descripcion=document.getElementById('descripcion');
+    const codigo=document.getElementById('codigo');
+    const cantidad=document.getElementById('cantidad');
+    const verCarritoBtn=document.getElementById('verCarritoBtn');
+
+    const SCAN_DEBOUNCE_MS=700; let lastScan=''; let lastAt=0;
+    let typingTimer=null; const TYPE_MS=300;
+
+    buscador.addEventListener('keydown',async(e)=>{
+      if(e.key!=='Enter')return;
+      const raw=buscador.value.replace(/[\r\n]+/g,''); const t=norm(raw); buscador.value='';
+      if(!t)return;
+      const now=Date.now(); if(t===lastScan && (now-lastAt)<SCAN_DEBOUNCE_MS) return; lastScan=t; lastAt=now;
+
+      if(/^\d+$/.test(t)){ const ok=await buscarPorCodigo(t); if(!ok) await buscarPorNombre(t); }
+      else{ await buscarPorNombre(t); }
+    });
+
+    buscador.addEventListener('input',()=>{
+      const v=buscador.value.trim();
+      if(typingTimer) clearTimeout(typingTimer);
+      if(v.length<2){ocultar();return;}
+      if(/^\d{6,}$/.test(v)) return;
+      typingTimer=setTimeout(()=>buscarPorNombre(v),TYPE_MS);
+    });
+
+    async function buscarPorCodigo(code){
+      try{
+        const byId=await db.collection('productos').doc(code).get();
+        if(byId.exists){mostrarProducto({id:byId.id,...byId.data()});return true;}
+        const v1=code, v2=pad13(code);
+        let q=await db.collection('productos').where('codigoBarra','==',v1).limit(1).get();
+        if(q.empty && v2!==v1) q=await db.collection('productos').where('codigoBarra','==',v2).limit(1).get();
+        if(!q.empty){const doc=q.docs[0];mostrarProducto({id:doc.id,...doc.data()});return true;}
+        ocultar(); return false;
+      }catch(e){console.error(e); ocultar(); return false;}
+    }
+
+    async function buscarPorNombre(text){
+      try{
+        const pref=upper(text);
+        const q=await db.collection('productos').where('concepto','>=',pref).where('concepto','<=',pref+'\uf8ff').limit(20).get();
+        if(!q.empty){const d=q.docs[0];mostrarProducto({id:d.id,...d.data()});} else ocultar();
+      }catch(e){console.error(e); ocultar();}
+    }
+
+    btnAgregar.addEventListener('click',()=>{
+      const cant=parseFloat(cantidad.value);
+      if(!cant || cant<=0 || !productoSeleccionado){alert('Verifica los datos'); return;}
+      const d=productoSeleccionado; const unidad=d.unidadMedidaSat||d.unidad||d.uMedida||'N/D';
+      const arr=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
+      arr.push({id:d.id,codigo:d.codigoBarra||d.id||'',descripcion:d.concepto||'Sin descripción',unidad,cantidad:cant});
+      localStorage.setItem('carrito_cigarro',JSON.stringify(arr));
+      ocultar(); buscador.value=''; cantidad.value=''; actualizarBoton();
+    });
+
+    function irAlCarrito(){window.location.href='pantalla3.html'}; window.irAlCarrito=irAlCarrito;
+
+    actualizarBoton();
+  </script>
 </body>
 </html>
