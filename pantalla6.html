@@ -209,33 +209,73 @@
       return `SAL-CIG-${pad4(n)}`;
     }
 
-    async function guardarSalida(){
-      const folio = await nextFolio();
-      $folio.textContent = folio;
+/* ================== GUARDAR Y ACTUALIZAR ================== */
+async function guardarSalida(){
+  const folio = await nextFolio();
+  $folio.textContent = folio;
 
-      const payload = {
-        folio,
-        fecha: $fecha.textContent,
-        entrega: $entrega.textContent,
-        recibe: $recibe.textContent,
-        destino: $destino.textContent,
-        productos: productos || [],
-        firmaEntrega: firmaEntregaB64 || '',
-        firmaRecibe:  firmaRecibeB64  || '',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      };
+  // 🔹 Reasegurar firmas desde localStorage antes de guardar
+  const firmaEntregaFinal = localStorage.getItem('firma_entrega_cigarro') 
+    || localStorage.getItem('firmaEntrega') 
+    || firmaEntregaB64 
+    || '';
+  const firmaRecibeFinal  = localStorage.getItem('firma_recibe_cigarro') 
+    || localStorage.getItem('firmaRecibe') 
+    || firmaRecibeB64 
+    || '';
 
-      // MISMA RUTA: almacenes/almacen_cigarro/salidas
-      await db.collection('almacenes').doc('almacen_cigarro')
-        .collection('salidas').add(payload);
+  const salida = {
+    folio,
+    fecha: $fecha.textContent,
+    entrega: $entrega.textContent,
+    recibe: $recibe.textContent,
+    destino: $destino.textContent,
+    productos: productos || [],
+    firmaEntrega: firmaEntregaFinal,
+    firmaRecibe:  firmaRecibeFinal,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
 
-      // limpiar folio en localStorage para el siguiente flujo
-      try{
-        const tmp = JSON.parse(localStorage.getItem('salidaCigarro')||'{}');
-        delete tmp.folio; localStorage.setItem('salidaCigarro', JSON.stringify(tmp));
-      }catch(_){}
-      return folio;
-    }
+  // ✅ Guarda salida completa con firmas
+  await db.collection('almacenes').doc('almacen_cigarro')
+    .collection('salidas').add(salida);
+
+  // 🔍 Revisa inventario para cada producto fijado
+  for(const art of productos){
+    try{
+      const snap = await db.collection('seguimiento_inventario')
+        .where('codigoBarra','==',art.codigo)
+        .where('activo','==',true)
+        .get();
+
+      if(!snap.empty){
+        snap.forEach(async doc=>{
+          const data = doc.data();
+          const ref = db.collection('seguimiento_inventario').doc(doc.id);
+          const invActual = parseInt(data.inventario_fijado||0);
+          const minimo = parseInt(data.inventario_minimo||0);
+          const nuevo = Math.max(0, invActual - parseInt(art.cantidad||0));
+
+          await ref.update({
+            inventario_fijado: nuevo,
+            ultima_salida: new Date().toISOString(),
+            actualizadoEn: new Date().toISOString()
+          });
+
+          await notificarInventario(data, nuevo, minimo);
+        });
+      }
+    }catch(err){ console.error('Error inventario:',err); }
+  }
+
+  await notificarGeneral(salida);
+
+  // 🧹 Limpieza total localStorage (pero conserva ticket actual hasta que descargue)
+  ["carrito_cigarro","salidaCigarro"]
+    .forEach(k=>localStorage.removeItem(k));
+
+  return folio;
+}
 
     /* ============ PDF 80mm NÍTIDO ============ */
     function preload(el){ return new Promise(r=>{ if(!el) return r(); el.complete ? r() : (el.onload=r, el.onerror=r); }); }
