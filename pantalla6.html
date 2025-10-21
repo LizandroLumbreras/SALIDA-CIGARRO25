@@ -141,106 +141,142 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <script>
-    /* ================== FIREBASE ================== */
-    const firebaseConfig={
-      apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-      authDomain:"inventariopv-643f1.firebaseapp.com",
-      projectId:"inventariopv-643f1",
-      storageBucket:"inventariopv-643f1.appspot.com",
-      messagingSenderId:"96242533231",
-      appId:"1:96242533231:web:aae75a18fbaf9840529e9a"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db=firebase.firestore();
+<script>
+/* ================== FIREBASE ================== */
+const firebaseConfig = {
+  apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+  authDomain:"inventariopv-643f1.firebaseapp.com",
+  projectId:"inventariopv-643f1",
+  storageBucket:"inventariopv-643f1.appspot.com",
+  messagingSenderId:"96242533231",
+  appId:"1:96242533231:web:aae75a18fbaf9840529e9a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-    /* ================== DATOS LOCALES ================== */
-    const datos = JSON.parse(localStorage.getItem('salidaCigarro')||'{}');
-    const productos = JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
+/* ================== DATOS LOCALES ================== */
+const datos = JSON.parse(localStorage.getItem('salidaCigarro') || '{}');
+const productos = JSON.parse(localStorage.getItem('carrito_cigarro') || '[]');
 
-    const getFirma = keys => {
-      for(const k of keys){ const v = localStorage.getItem(k); if(v?.startsWith('data:image')) return v; }
-      return '';
-    };
-    const firmaEntregaB64 = getFirma(['firma_entrega_cigarro','firmaEntrega']);
-    const firmaRecibeB64  = getFirma(['firma_recibe_cigarro','firmaRecibe']);
+const getFirma = keys => {
+  for (const k of keys) {
+    const v = localStorage.getItem(k);
+    if (v?.startsWith('data:image')) return v;
+  }
+  return '';
+};
+const firmaEntregaB64 = getFirma(['firma_entrega_cigarro','firmaEntrega']);
+const firmaRecibeB64  = getFirma(['firma_recibe_cigarro','firmaRecibe']);
 
-    const $folio = document.getElementById('folio');
-    const $fecha = document.getElementById('fecha');
-    const $entrega = document.getElementById('entrega');
-    const $recibe = document.getElementById('recibe');
-    const $destino = document.getElementById('destino');
-    const $lista = document.getElementById('lista');
+const $folio = document.getElementById('folio');
+const $fecha = document.getElementById('fecha');
+const $entrega = document.getElementById('entrega');
+const $recibe = document.getElementById('recibe');
+const $destino = document.getElementById('destino');
+const $lista = document.getElementById('lista');
 
-    document.getElementById('imgFirmaEntrega').src = firmaEntregaB64 || '';
-    document.getElementById('imgFirmaRecibe').src  = firmaRecibeB64  || '';
+document.getElementById('imgFirmaEntrega').src = firmaEntregaB64 || '';
+document.getElementById('imgFirmaRecibe').src  = firmaRecibeB64  || '';
 
-    $fecha.textContent   = datos.fecha || new Date().toLocaleString('es-MX');
-    $entrega.textContent = datos.entrega || '';
-    $recibe.textContent  = datos.recibe || '';
-    $destino.textContent = datos.destino || '';
+$fecha.textContent   = datos.fecha || new Date().toLocaleString('es-MX');
+$entrega.textContent = datos.entrega || '';
+$recibe.textContent  = datos.recibe || '';
+$destino.textContent = datos.destino || '';
 
-    // Render filas (flex) con mm fijos
-    (productos||[]).forEach(p=>{
-      const row = document.createElement('div');
-      row.className = 'tr';
-      row.innerHTML = `
-        <div class="col-cod">${p.codigo??''}</div>
-        <div class="col-des">${(p.descripcion??'').toUpperCase()}</div>
-        <div class="col-und">${p.unidad??''}</div>
-        <div class="col-cant">${p.cantidad??0}</div>`;
-      $lista.appendChild(row);
-    });
+(productos||[]).forEach(p=>{
+  const row = document.createElement('div');
+  row.className = 'tr';
+  row.innerHTML = `
+    <div class="col-cod">${p.codigo??''}</div>
+    <div class="col-des">${(p.descripcion??'').toUpperCase()}</div>
+    <div class="col-und">${p.unidad??''}</div>
+    <div class="col-cant">${p.cantidad??0}</div>`;
+  $lista.appendChild(row);
+});
 
-    /* ============ CONSECUTIVO + GUARDADO (MISMA ESTRUCTURA) ============ */
-    const COL_CONSEC = 'consecutivos';
-    const DOC_CONSEC = 'salidas_cigarro';  // <-- mismo doc de tus salidas de cigarro
-    const pad4 = n => String(n).padStart(4,'0');
+/* ================== CONFIGURACIÓN BASE ================== */
+const TOKEN = "8495270080:AAFBJ8Vxi6ZhqP6ghtJqMal9RZFz3YJBpo8";
+const CHAT_ID = "6617988297";
+const COL_CONSEC = 'consecutivos';
+const DOC_CONSEC = 'salidas_cigarro';
+const pad4 = n => String(n).padStart(4,'0');
 
-    async function nextFolio(){
-      const ref = db.collection(COL_CONSEC).doc(DOC_CONSEC);
-      const n = await db.runTransaction(async tx=>{
-        const snap = await tx.get(ref);
-        const cur  = snap.exists ? Number(snap.data().ultimo||0) : 0;
-        const nxt  = cur+1;
-        snap.exists ? tx.update(ref,{ultimo:nxt}) : tx.set(ref,{ultimo:nxt});
-        return nxt;
+/* ================== FUNCIONES AUXILIARES ================== */
+async function nextFolio(){
+  const ref = db.collection(COL_CONSEC).doc(DOC_CONSEC);
+  const n = await db.runTransaction(async tx=>{
+    const snap = await tx.get(ref);
+    const cur = snap.exists ? Number(snap.data().ultimo||0) : 0;
+    const nxt = cur+1;
+    snap.exists ? tx.update(ref,{ultimo:nxt}) : tx.set(ref,{ultimo:nxt});
+    return nxt;
+  });
+  return `SAL-CIG-${pad4(n)}`;
+}
+
+/* ================== FUNCIONES TELEGRAM ================== */
+
+// 🟢 ENVÍA RESUMEN GENERAL DE SALIDA
+async function enviarSalidaTelegram(salida){
+  try{
+    let msg = `🚬 *Salida registrada – Almacén Cigarro*\n\n`;
+    msg += `📄 Folio: ${salida.folio}\n`;
+    msg += `📅 Fecha: ${salida.fecha}\n`;
+    msg += `👤 Entrega: ${salida.entrega}\n`;
+    msg += `🤝 Recibe: ${salida.recibe}\n`;
+    msg += `📍 Destino: ${salida.destino}\n\n`;
+
+    if(Array.isArray(salida.productos) && salida.productos.length){
+      msg += `📦 Artículos:\n`;
+      salida.productos.forEach(p=>{
+        msg += `• ${p.cantidad} x ${p.descripcion||p.nombre} (Código: ${p.codigo})\n`;
       });
-      return `SAL-CIG-${pad4(n)}`;
     }
 
-/* ================== GUARDAR Y ACTUALIZAR ================== */
-async function guardarSalida(){
-  const folio = await nextFolio();
-  $folio.textContent = folio;
+    await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:CHAT_ID,text:msg,parse_mode:"Markdown"})
+    });
+  }catch(e){ console.warn("No se pudo enviar la notificación general:",e); }
+}
 
-  // 🔹 Reasegurar firmas desde localStorage antes de guardar
-  const firmaEntregaFinal = localStorage.getItem('firma_entrega_cigarro') 
-    || localStorage.getItem('firmaEntrega') 
-    || firmaEntregaB64 
-    || '';
-  const firmaRecibeFinal  = localStorage.getItem('firma_recibe_cigarro') 
-    || localStorage.getItem('firmaRecibe') 
-    || firmaRecibeB64 
-    || '';
+// 🚨 ENVÍA ALERTA POR CADA PRODUCTO (CRÍTICO O NORMAL)
+async function enviarAlertaInventario(item, nuevo, minimo){
+  const esCritico = nuevo <= minimo;
+  let msg = "";
+  if(esCritico){
+    msg = `
+🔥🔥🔥 *ALERTA MÁXIMA DE INVENTARIO* 🔥🔥🔥
+💀 *¡STOCK CRÍTICO DETECTADO!* 💀
+📦 ${item.concepto || item.descripcion || item.nombre}
+🆔 Código: ${item.codigoBarra || item.codigo}
+📉 Existencia actual: ${nuevo}
+🔢 Mínimo definido: ${minimo}
+🏠 Almacén: Cigarro
+📅 ${new Date().toLocaleString("es-MX")}
+⚠️ *¡REPOSICIÓN URGENTE NECESARIA!* ⚠️
+🚒🔥💣🚨💥🧯🔥💥🚨💣🔥🚒`;
+  }else{
+    msg = `
+✅ *Inventario actualizado correctamente*
+📦 ${item.concepto || item.descripcion || item.nombre}
+🆔 Código: ${item.codigoBarra || item.codigo}
+📉 Existencia actual: ${nuevo}
+🔢 Mínimo definido: ${minimo}
+🏠 Almacén: Cigarro
+📅 ${new Date().toLocaleString("es-MX")}`;
+  }
 
-  const salida = {
-    folio,
-    fecha: $fecha.textContent,
-    entrega: $entrega.textContent,
-    recibe: $recibe.textContent,
-    destino: $destino.textContent,
-    productos: productos || [],
-    firmaEntrega: firmaEntregaFinal,
-    firmaRecibe:  firmaRecibeFinal,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  };
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({chat_id:CHAT_ID,text:msg,parse_mode:"Markdown"})
+  });
+}
 
-  // ✅ Guarda salida completa con firmas
-  await db.collection('almacenes').doc('almacen_cigarro')
-    .collection('salidas').add(salida);
-
-  // 🔍 Revisa inventario para cada producto fijado
+/* ================== FUNCIÓN DE INVENTARIO (INDEPENDIENTE) ================== */
+async function verificarInventarioYNotificar(productos){
   for(const art of productos){
     try{
       const snap = await db.collection('seguimiento_inventario')
@@ -252,6 +288,7 @@ async function guardarSalida(){
         snap.forEach(async doc=>{
           const data = doc.data();
           const ref = db.collection('seguimiento_inventario').doc(doc.id);
+
           const invActual = parseInt(data.inventario_fijado||0);
           const minimo = parseInt(data.inventario_minimo||0);
           const nuevo = Math.max(0, invActual - parseInt(art.cantidad||0));
@@ -262,76 +299,89 @@ async function guardarSalida(){
             actualizadoEn: new Date().toISOString()
           });
 
-          await notificarInventario(data, nuevo, minimo);
+          await enviarAlertaInventario(data, nuevo, minimo);
         });
+      } else {
+        console.log(`ℹ️ Código ${art.codigo} no está en seguimiento_inventario.`);
       }
-    }catch(err){ console.error('Error inventario:',err); }
+    }catch(err){
+      console.error("❌ Error en verificación de inventario:", err);
+    }
   }
+}
 
-  await notificarGeneral(salida);
+/* ================== FUNCIÓN PRINCIPAL ================== */
+async function guardarSalida(){
+  const folio = await nextFolio();
+  $folio.textContent = folio;
 
-  // 🧹 Limpieza total localStorage (pero conserva ticket actual hasta que descargue)
-  ["carrito_cigarro","salidaCigarro"]
-    .forEach(k=>localStorage.removeItem(k));
+  // Firmas aseguradas
+  const firmaEntregaFinal = localStorage.getItem('firma_entrega_cigarro') || firmaEntregaB64 || '';
+  const firmaRecibeFinal  = localStorage.getItem('firma_recibe_cigarro')  || firmaRecibeB64  || '';
+
+  const salida = {
+    folio,
+    fecha: $fecha.textContent,
+    entrega: $entrega.textContent,
+    recibe: $recibe.textContent,
+    destino: $destino.textContent,
+    productos: productos || [],
+    firmaEntrega: firmaEntregaFinal,
+    firmaRecibe: firmaRecibeFinal,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  // 1️⃣ Guarda la salida
+  await db.collection('almacenes').doc('almacen_cigarro')
+    .collection('salidas').add(salida);
+
+  // 2️⃣ Ejecuta las funciones independientes
+  await enviarSalidaTelegram(salida);
+  await verificarInventarioYNotificar(productos);
+
+  // 3️⃣ Limpia localStorage
+  ["carrito_cigarro","salidaCigarro"].forEach(k=>localStorage.removeItem(k));
 
   return folio;
 }
 
-    /* ============ PDF 80mm NÍTIDO ============ */
-    function preload(el){ return new Promise(r=>{ if(!el) return r(); el.complete ? r() : (el.onload=r, el.onerror=r); }); }
+/* ================== PDF ================== */
+function preload(el){ return new Promise(r=>{ if(!el) return r(); el.complete?r(): (el.onload=r,el.onerror=r); }); }
 
-    async function descargarPDF(){
-      const { jsPDF } = window.jspdf;
-      const root = document.getElementById('ticket');
+async function descargarPDF(){
+  const { jsPDF } = window.jspdf;
+  const root = document.getElementById('ticket');
+  await Promise.all([
+    preload(document.getElementById('logoEmpresa')),
+    preload(document.getElementById('imgFirmaEntrega')),
+    preload(document.getElementById('imgFirmaRecibe'))
+  ]);
+  const scale = 3;
+  const canvas = await html2canvas(root,{scale,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:root.scrollWidth});
+  const Wmm = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-mm')) || 80;
+  const imgData = canvas.toDataURL('image/png');
+  const pxPerMM = canvas.width / Wmm;
+  const Hmm = canvas.height / pxPerMM;
+  const pdf = new jsPDF('p','mm',[Wmm,Hmm]);
+  pdf.addImage(imgData,'PNG',0,0,Wmm,Hmm);
+  pdf.save(`Comprobante_${($folio.textContent||'SAL-CIG')}.pdf`);
+}
 
-      // Asegura imágenes listas (logo y firmas)
-      await Promise.all([
-        preload(document.getElementById('logoEmpresa')),
-        preload(document.getElementById('imgFirmaEntrega')),
-        preload(document.getElementById('imgFirmaRecibe'))
-      ]);
+/* ================== BOTÓN PRINCIPAL ================== */
+const btn = document.getElementById('btnGuardarDescargar');
+btn.addEventListener('click', async ()=>{
+  if(!productos?.length){ alert('No hay productos.'); return; }
+  btn.disabled = true;
+  try{
+    await guardarSalida();
+    await descargarPDF();
+    setTimeout(()=>location.href='index.html',1000);
+  }catch(e){
+    console.error(e);
+    alert('Error: '+(e.message||e));
+  }finally{ btn.disabled = false; }
+});
+</script>
 
-      const scale = 3; // más nitidez
-      const canvas = await html2canvas(root, {
-        scale,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false,
-        windowWidth: root.scrollWidth,
-      });
-
-      const Wmm = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-mm')) || 80;
-      const imgData = canvas.toDataURL('image/png');
-      const pxPerMM = canvas.width / Wmm;
-      const Hmm = canvas.height / pxPerMM;
-
-      const pdf = new jsPDF('p','mm',[Wmm, Hmm]);
-      pdf.addImage(imgData,'PNG',0,0,Wmm,Hmm);
-
-      const name = `Comprobante_${($folio.textContent||'SAL-CIG')}.pdf`.replace(/\s+/g,'_');
-      pdf.save(name);
-    }
-
-    /* ============ BOTÓN PRINCIPAL ============ */
-    const btn = document.getElementById('btnGuardarDescargar');
-    btn.addEventListener('click', async ()=>{
-      if(!productos?.length){ alert('No hay productos.'); return; }
-      btn.disabled = true;
-      try{
-        await guardarSalida();
-        await descargarPDF();
-        // window.print(); // <- descomenta si quieres mandar directo a impresora
-        setTimeout(()=>{
-          localStorage.removeItem('carrito_cigarro');
-          // localStorage.removeItem('firma_entrega_cigarro');
-          // localStorage.removeItem('firma_recibe_cigarro');
-          location.href = 'index.html';
-        }, 800);
-      }catch(e){
-        console.error(e);
-        alert('Error: '+(e.message||e));
-      }finally{ btn.disabled = false; }
-    });
-  </script>
 </body>
 </html>
