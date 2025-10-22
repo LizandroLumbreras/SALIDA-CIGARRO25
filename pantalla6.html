@@ -162,14 +162,11 @@ const pad4=n=>String(n).padStart(4,'0');
 /* ================== FUNCIONES ================== */
 async function nextFolio(){
   const ref=db.collection(COL_CONSEC).doc(DOC_CONSEC);
-  const n=await db.runTransaction(async tx=>{
-    const snap=await tx.get(ref);
-    const cur=snap.exists?Number(snap.data().ultimo||0):0;
-    const nxt=cur+1;
-    snap.exists?tx.update(ref,{ultimo:nxt}):tx.set(ref,{ultimo:nxt});
-    return nxt;
-  });
-  return `SAL-CIG-${pad4(n)}`;
+  const snap=await ref.get();
+  const cur=snap.exists ? (snap.data().ultimo||0) : 0;
+  const nxt=cur+1;
+  await ref.set({ultimo:nxt},{merge:true});
+  return `SAL-CIG-${pad4(nxt)}`;
 }
 
 async function enviarSalidaTelegram(salida){
