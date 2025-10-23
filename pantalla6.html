@@ -205,33 +205,76 @@ async function enviarAlertaInventario(item,nuevo,minimo){
   await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT_ID,text:msg,parse_mode:"Markdown"})});
 }
 
-/* ✅ FUNCIÓN DE INVENTARIO AJUSTADA */
+/* ✅ FUNCIÓN DE INVENTARIO AJUSTADA CON HISTORIAL Y ALERTAS */
 async function verificarInventarioYNotificar(productos){
-  for(const art of productos){
-    try{
-      const snap=await db.collection('seguimiento_inventario')
-        .where('codigoBarra','==',art.codigo)
-        .where('activo','==',true).get();
+  for (const art of productos) {
+    try {
+      const snap = await db.collection("seguimiento_inventario")
+        .where("codigoBarra", "==", art.codigo)
+        .where("activo", "==", true)
+        .get();
 
-      if(!snap.empty){
-        snap.forEach(async doc=>{
-          const data=doc.data();
-          const ref=db.collection('seguimiento_inventario').doc(doc.id);
+      if (!snap.empty) {
+        for (const docu of snap.docs) {
+          const data = docu.data();
+          const ref = db.collection("seguimiento_inventario").doc(docu.id);
 
-          const cantidadSalida=Math.abs(Number(String(art.cantidad).replace(/[^0-9.-]/g,'')))||0;
-          const invActual=Math.abs(Number(data.inventario_fijado))||0;
-          const minimo=Math.abs(Number(data.inventario_minimo))||0;
-          const nuevo=invActual>=cantidadSalida?invActual-cantidadSalida:0;
+          const salida = Math.abs(Number(String(art.cantidad).replace(/[^0-9.-]/g, ""))) || 0;
+          const invActual = Math.abs(Number(data.inventario_fijado)) || 0;
+          const minimo = Math.abs(Number(data.inventario_minimo)) || 0;
+          const nuevo = invActual >= salida ? invActual - salida : 0;
 
+          console.log(`🚬 ${art.codigo} → Actual: ${invActual} | Salida: ${salida} | Nuevo: ${nuevo}`);
+
+          // 1️⃣ Actualiza Firestore
           await ref.update({
-            inventario_fijado:nuevo,
-            ultima_salida:new Date().toISOString(),
-            actualizadoEn:new Date().toISOString()
+            inventario_fijado: nuevo,
+            ultima_salida: new Date().toISOString(),
+            actualizadoEn: new Date().toISOString()
           });
-          await enviarAlertaInventario(data,nuevo,minimo);
-        });
-      }else console.log(`ℹ️ Código ${art.codigo} no está en seguimiento_inventario.`);
-    }catch(err){console.error("❌ Error en verificación de inventario:",err);}
+
+          // 2️⃣ Registra historial de movimiento
+          await ref.collection("historial").add({
+            tipo: "salida",
+            cantidad: salida,
+            folio: $folio.textContent || "SAL-CIG",
+            fecha: new Date().toISOString(),
+            usuario: $entrega.textContent || "sistema",
+            descripcion: "Salida registrada desde módulo Almacén Cigarro"
+          });
+
+          // 3️⃣ Construye y envía alerta Telegram
+          const esCritico = nuevo <= minimo;
+          let msg = `🚬 *Almacén Cigarro – Control de Stock*\n\n`;
+
+          if (esCritico) {
+            msg += `🚨 *ALERTA CRÍTICA DE INVENTARIO*\n`;
+            msg += `📦 ${data.concepto || art.descripcion || art.nombre}\n🆔 Código: ${data.codigoBarra || art.codigo}\n`;
+            msg += `📉 Existencia actual: ${nuevo}\n🔢 Mínimo definido: ${minimo}\n`;
+            msg += `🏠 Almacén: Cigarro\n📅 ${new Date().toLocaleString("es-MX")}\n`;
+            msg += `⚠️ *REPOSICIÓN URGENTE NECESARIA* 🚨`;
+          } else {
+            msg += `✅ Inventario actualizado correctamente\n`;
+            msg += `📦 ${data.concepto || art.descripcion || art.nombre}\n🆔 Código: ${data.codigoBarra || art.codigo}\n`;
+            msg += `📤 Salida reciente: ${salida}\n📉 Existencia actual: ${nuevo}\n`;
+            msg += `🔢 Mínimo definido: ${minimo}\n🏠 Almacén: Cigarro\n📅 ${new Date().toLocaleString("es-MX")}`;
+          }
+
+          await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, text: msg, parse_mode: "Markdown" })
+          });
+
+          console.log(`✅ Inventario actualizado y registrado en historial: ${art.codigo}`);
+        }
+      } else {
+        console.log(`ℹ️ Código ${art.codigo} no encontrado en seguimiento_inventario`);
+      }
+
+    } catch (err) {
+      console.error("❌ Error en verificación de inventario:", err);
+    }
   }
 }
 
