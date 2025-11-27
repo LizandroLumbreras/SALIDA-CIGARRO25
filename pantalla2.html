@@ -1,230 +1,189 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Salida de Productos – Cigarro</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-    body{
-      font-family:'Poppins',sans-serif;
-      background:linear-gradient(to right,#00416A,#E4E5E6);
-      margin:0;padding:0;color:white;
-      min-height:100vh;position:relative;
-    }
-    .marca-agua{
-      position:fixed;top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      opacity:.1;z-index:0;max-width:80%;
-      pointer-events:none;
-    }
-    .contenedor{
-      max-width:650px;margin:50px auto;padding:20px;
-      background:rgba(255,255,255,0.1);border-radius:12px;
-      position:relative;z-index:2;
-    }
-    h2{text-align:center;margin-bottom:20px;}
-    .tarjeta,.producto{
-      background:white;color:black;padding:14px 18px;
-      margin:10px 0;border-radius:10px;font-weight:600;
-      cursor:pointer;text-align:center;
-      transition:background .25s;
-    }
-    .tarjeta:hover,.producto:hover{background:#e3f2fd;}
-    #popupCantidad{
-      display:none;position:fixed;top:50%;left:50%;
-      transform:translate(-50%,-50%);background:white;padding:22px;
-      border-radius:10px;z-index:9999;color:black;width:90%;
-      max-width:350px;box-shadow:0 4px 12px rgba(0,0,0,.25);
-    }
-    #popupCantidad input{
-      width:100%;padding:10px;margin:10px 0;font-size:16px;
-    }
-    #popupCantidad button{
-      padding:10px 20px;margin:5px;border:none;border-radius:6px;
-      cursor:pointer;font-weight:bold;
-    }
-    .cancelar{background:#ccc;color:black;}
-    .agregar{background:#00416A;color:white;}
-</style>
+  <meta charset="UTF-8" />
+  <title>Buscar productos - Cigarro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body{font-family:Arial,sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;padding:20px;color:white;min-height:100vh;box-sizing:border-box;position:relative}
+    .marca-agua{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);opacity:.07;z-index:0;max-width:90%;pointer-events:none}
+    .contenedor{max-width:700px;margin:auto;background:rgba(255,255,255,.1);border-radius:10px;padding:20px;z-index:1;position:relative}
+    h2{text-align:center;margin-bottom:20px}
+    input[type="text"],input[type="number"]{width:100%;padding:10px;margin:10px 0;border-radius:6px;border:none;font-size:16px}
+    .info-producto{background:white;color:black;padding:15px;border-radius:10px;margin-top:10px;display:none}
+    .info-producto strong{display:block;margin-bottom:5px}
+    button{background:#e60000;color:white;border:none;padding:12px;width:100%;border-radius:6px;font-size:16px;cursor:pointer;margin-top:10px}
+    button:hover{background:#b00000}
+    .ayuda{font-size:12px;opacity:.9;margin-top:-6px}
+  </style>
 </head>
-
 <body>
+  <img src="logo_proveedora.webp" class="marca-agua" alt="Marca de agua">
 
-<img src="logo_proveedora.webp" class="marca-agua">
+  <div class="contenedor">
+    <h2>Buscar producto</h2>
+    <p class="ayuda">Escribe un <b>código</b> o el <b>inicio</b> del nombre (ej. "MARLBORO", "CAJA").</p>
 
-<div class="contenedor" id="pantalla">
-    <h2>Selecciona Marca</h2>
+    <input id="buscador" type="text" placeholder="Buscar por código o nombre..." autofocus autocomplete="off" autocapitalize="off" spellcheck="false"/>
 
-    <button id="btnActualizar"
-      style="display:block;margin:10px auto;background:#0d47a1;color:white;
-      border:none;padding:10px 20px;border-radius:8px;cursor:pointer;">
-      🔄 Actualizar productos
-    </button>
-
-    <div id="marcasContainer"></div>
-    <p id="loader" style="text-align:center;margin-top:20px;">Cargando marcas...</p>
-</div>
-
-<div class="contenedor" id="productos" style="display:none;">
-    <h2 id="tituloProductos"></h2>
-    <div id="listaProductos"></div>
-</div>
-
-<div id="popupCantidad">
-    <h3>Agregar cantidad</h3>
-    <p id="nombreProductoSeleccionado"></p>
-    <input type="number" id="inputCantidad" placeholder="Cantidad" min="0.001" step="0.001">
-    <div style="text-align:right;">
-      <button class="cancelar" onclick="cerrarPopup()">Cancelar</button>
-      <button class="agregar" onclick="confirmarCantidad()">Agregar</button>
+    <div class="info-producto" id="infoProducto">
+      <strong id="descripcion"></strong>
+      <div id="codigo"></div>
+      <input type="number" id="cantidad" placeholder="Cantidad a retirar" step="0.001" min="0.001">
+      <button id="btnAgregar">Agregar</button>
     </div>
-</div>
 
-<script type="module">
-import { initializeApp } 
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs } 
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    <button id="verCarritoBtn" onclick="irAlCarrito()" style="display:none;">Ver Carrito 🛒</button>
+  </div>
 
-// Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-  authDomain: "inventariopv-643f1.firebaseapp.com",
-  projectId: "inventariopv-643f1",
-  storageBucket: "inventariopv-643f1.appspot.com",
-  messagingSenderId: "96242533231",
-  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-};
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig={apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",authDomain:"inventariopv-643f1.firebaseapp.com",projectId:"inventariopv-643f1",storageBucket:"inventariopv-643f1.appspot.com",messagingSenderId:"96242533231",appId:"1:96242533231:web:aae75a18fbaf9840529e9a"};
+    firebase.initializeApp(firebaseConfig);
+    const db=firebase.firestore();
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    // --- Estado / refs DOM ---
+    let productoSeleccionado=null;
+    const buscador     = document.getElementById('buscador');
+    const infoProducto = document.getElementById('infoProducto');
+    const descripcion  = document.getElementById('descripcion');
+    const codigo       = document.getElementById('codigo');
+    const cantidad     = document.getElementById('cantidad');
+    const verCarritoBtn= document.getElementById('verCarritoBtn');
+    const btnAgregar   = document.getElementById('btnAgregar');
 
-let productos = [];
-let marcasUnicas = new Set();
+    // --- Utils ---
+    const pad13  = s=>String(s).replace(/\s+/g,'').padStart(13,'0');
+    const norm   = s=>String(s).trim().replace(/[\s\r\n\t]+/g,'');
+    const upper  = s=>String(s||'').toUpperCase();
 
-// =======================================================
-//  CARGAR PRODUCTOS ACTIVOS DEL DEPARTAMENTO "CIGARROS"
-// =======================================================
-async function cargarProductos() {
-    document.getElementById("loader").style.display = "block";
-    productos = [];
-    marcasUnicas.clear();
-
-    const colRef = collection(db, "productos");
-    const snap = await getDocs(colRef);
-
-    snap.forEach(doc => {
-        const d = doc.data();
-
-        if (d.activo !== true) return;                       // solo activos
-        if (d.departamento !== "CIGARROS") return;          // solo cigarros
-
-        const marca = (d.marca || "SIN MARCA").trim().toUpperCase();
-        const codigo = (d.codigoBarra || doc.id).trim();
-        const descripcion = (d.concepto || d.descripcion || "").trim();
-
-        if (!codigo || !descripcion) return;
-
-        productos.push({
-            codigo,
-            descripcion,
-            marca
-        });
-
-        marcasUnicas.add(marca);
-    });
-
-    document.getElementById("loader").style.display = "none";
-    mostrarMarcas();
-}
-
-// =======================================================
-//           MOSTRAR TARJETAS POR MARCA
-// =======================================================
-function mostrarMarcas() {
-    const cont = document.getElementById("marcasContainer");
-    cont.innerHTML = "";
-
-    [...marcasUnicas].sort().forEach(marca => {
-        const div = document.createElement("div");
-        div.className = "tarjeta";
-        div.textContent = marca;
-        div.onclick = () => mostrarProductos(marca);
-        cont.appendChild(div);
-    });
-}
-
-// =======================================================
-//        MOSTRAR PRODUCTOS DE ESA MARCA
-// =======================================================
-function mostrarProductos(marca) {
-    document.getElementById("pantalla").style.display = "none";
-
-    const lista = document.getElementById("listaProductos");
-    lista.innerHTML = "";
-
-    const filtrados = productos.filter(p => p.marca === marca);
-
-    filtrados.sort((a,b)=>a.descripcion.localeCompare(b.descripcion));
-
-    filtrados.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "producto";
-        div.textContent = p.descripcion;
-        div.onclick = () => abrirPopup(p);
-        lista.appendChild(div);
-    });
-
-    document.getElementById("tituloProductos").textContent = marca;
-    document.getElementById("productos").style.display = "block";
-}
-
-// =======================================================
-//          POPUP MANEJO CANTIDAD
-// =======================================================
-let productoSeleccionado = null;
-
-function abrirPopup(p) {
-    productoSeleccionado = p;
-    document.getElementById("nombreProductoSeleccionado").textContent = p.descripcion;
-    document.getElementById("inputCantidad").value = "";
-    document.getElementById("popupCantidad").style.display = "block";
-}
-
-window.cerrarPopup = function () {
-    document.getElementById("popupCantidad").style.display = "none";
-};
-
-window.confirmarCantidad = function () {
-    const cantidad = parseFloat(document.getElementById("inputCantidad").value);
-
-    if (!cantidad || cantidad <= 0) {
-        alert("Cantidad inválida");
-        return;
+    function mostrarProducto(p){
+      productoSeleccionado=p;
+      descripcion.textContent=p.concepto||'Sin descripción';
+      codigo.textContent='Código: '+(p.codigoBarra||p.id||'');
+      cantidad.value='';
+      infoProducto.style.display='block';
+      cantidad.focus();
+    }
+    function ocultar(){productoSeleccionado=null;infoProducto.style.display='none';}
+    function actualizarBoton(){
+      const prods=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
+      verCarritoBtn.style.display=prods.length>0?'block':'none';
     }
 
-    let carrito = JSON.parse(localStorage.getItem("carrito_cigarro") || "[]");
+    // ====== Antiduplicados / Handlers blindados ======
+    const SCAN_DEBOUNCE_MS = 800;   // ventana para ignorar misma lectura
+    const TYPE_MS          = 300;   // debounce para nombre
 
-    carrito.push({
-        nombre: productoSeleccionado.descripcion,
-        codigo: productoSeleccionado.codigo,
-        cantidad
+    // Evita enganchar dos veces si el script llega a evaluarse de nuevo
+    if (!window.__scannerHandlersBoundCigarro) {
+      window.__scannerHandlersBoundCigarro = true;
+
+      let lastScan = '';
+      let lastAt   = 0;
+      let typingTimer = null;
+      let processing  = false; // candado
+
+      // foco al cargar
+      window.addEventListener('DOMContentLoaded', ()=> buscador && buscador.focus());
+
+      // ESCÁNER: Enter / NumpadEnter / Tab
+      buscador.addEventListener('keydown', async(e)=>{
+        const isSubmitKey = (e.key==='Enter' || e.code==='NumpadEnter' || e.key==='Tab');
+        if(!isSubmitKey) return;
+        if(e.repeat) return;             // evita repeticiones por key holding
+        e.preventDefault();
+        e.stopPropagation();
+
+        const raw = (buscador.value||'').replace(/[\r\n\t]+/g,'');
+        const t   = norm(raw);
+        buscador.value='';               // limpia inmediatamente
+        if(!t) return;
+
+        const now = Date.now();
+        if(t===lastScan && (now-lastAt)<SCAN_DEBOUNCE_MS) return;
+        if(processing) return;
+        lastScan = t; lastAt = now; processing = true;
+
+        try{
+          if(/^\d+$/.test(t)){
+            const ok = await buscarPorCodigo(t);
+            if(!ok) await buscarPorNombre(t);
+          }else{
+            await buscarPorNombre(t);
+          }
+        }catch(err){
+          console.error('[scanner]',err);
+        }finally{
+          processing=false;
+        }
+      });
+
+      // TECLADO manual: búsqueda por nombre con debounce
+      buscador.addEventListener('input', ()=>{
+        if(typingTimer) clearTimeout(typingTimer);
+        const v = (buscador.value||'').trim();
+        if(v.length<2){ ocultar(); return; }
+        if(/^\d{6,}$/.test(v)) return; // parece código -> esperar Enter/Tab
+        typingTimer = setTimeout(()=>buscarPorNombre(v), TYPE_MS);
+      });
+
+      // Limpia CR/LF/TAB si el escáner los deja
+      buscador.addEventListener('change', ()=>{
+        buscador.value = (buscador.value||'').replace(/[\r\n\t]+/g,'');
+      });
+    }
+
+    // ====== Búsquedas abiertas (sin filtros de depto para Cigarro) ======
+    async function buscarPorCodigo(code){
+      try{
+        // docId directo
+        const byId=await db.collection('productos').doc(code).get();
+        if(byId.exists){ mostrarProducto({id:byId.id,...byId.data()}); return true; }
+
+        // codigoBarra exacto / pad13
+        const v1=code, v2=pad13(code);
+        let q=await db.collection('productos').where('codigoBarra','==',v1).limit(1).get();
+        if(q.empty && v2!==v1) q=await db.collection('productos').where('codigoBarra','==',v2).limit(1).get();
+
+        if(!q.empty){ const doc=q.docs[0]; mostrarProducto({id:doc.id,...doc.data()}); return true; }
+        ocultar(); return false;
+      }catch(e){ console.error(e); ocultar(); return false; }
+    }
+
+    async function buscarPorNombre(text){
+      try{
+        const pref=upper(text);
+        const q=await db.collection('productos')
+          .where('concepto','>=',pref)
+          .where('concepto','<=',pref+'\uf8ff')
+          .limit(20).get();
+
+        if(!q.empty){ const d=q.docs[0]; mostrarProducto({id:d.id,...d.data()}); }
+        else ocultar();
+      }catch(e){ console.error(e); ocultar(); }
+    }
+
+    // Agregar al carrito
+    btnAgregar.addEventListener('click',()=>{
+      const cant=parseFloat(cantidad.value);
+      if(!cant || cant<=0 || !productoSeleccionado){
+        alert('Verifica los datos'); return;
+      }
+      const d=productoSeleccionado;
+      const unidad=d.unidadMedidaSat||d.unidad||d.uMedida||'N/D';
+      const arr=JSON.parse(localStorage.getItem('carrito_cigarro')||'[]');
+      arr.push({id:d.id,codigo:d.codigoBarra||d.id||'',descripcion:d.concepto||'Sin descripción',unidad,cantidad:cant});
+      localStorage.setItem('carrito_cigarro',JSON.stringify(arr));
+      ocultar(); buscador.value=''; cantidad.value=''; actualizarBoton(); buscador.focus();
     });
 
-    localStorage.setItem("carrito_cigarro", JSON.stringify(carrito));
-    cerrarPopup();
-    window.location.href = "pantalla3.html";
-};
+    function irAlCarrito(){window.location.href='pantalla3.html'}
+    window.irAlCarrito=irAlCarrito;
 
-// =======================================================
-//  EVENTO ACTUALIZAR
-// =======================================================
-document.getElementById("btnActualizar").onclick = () => cargarProductos();
-
-// Inicio
-cargarProductos();
-
-</script>
-
+    actualizarBoton();
+  </script>
 </body>
 </html>
